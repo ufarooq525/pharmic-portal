@@ -57,7 +57,7 @@ class PortalTest extends TestCase
 
     public function test_guests_are_sent_to_login_and_nothing_is_indexable(): void
     {
-        $this->get('/')->assertRedirect('/dashboard');
+        $this->get('/')->assertRedirect(route('dashboard'));
         $this->get('/dashboard')->assertRedirect('/login');
 
         $this->get('/login')->assertOk()
