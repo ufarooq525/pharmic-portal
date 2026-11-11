@@ -24,12 +24,29 @@ class DashboardData
     /** @var array<string, array> */
     private array $stockMemo = [];
 
-    public function for(CarbonImmutable $period): array
+    /** Distributors the viewer may see; null for all. */
+    private ?array $scope = null;
+
+    /** @param list<int>|null $scope */
+    public function for(CarbonImmutable $period, ?array $scope = null): array
     {
-        // Cached per month; any upload, confirm or stock change produces a new key.
-        $stamp = implode('|', [Import::max('updated_at'), DB::table('stock_movements')->max('id'), DB::table('customer_medical_rep')->max('updated_at')]);
+        $this->scope = $scope;
+
+        // Cached per month and scope; any upload, confirm or stock change produces a new key.
+        $stamp = implode('|', [Import::max('updated_at'), DB::table('stock_movements')->max('id'), DB::table('customer_medical_rep')->max('updated_at'), json_encode($scope)]);
 
         return Cache::remember('dashboard:'.$period->format('Y-m').':'.md5($stamp), now()->addMinutes(10), fn () => $this->build($period));
+    }
+
+    /** Sale lines limited to the viewer's distributors. */
+    private function sales()
+    {
+        return SaleLine::query()->when($this->scope, fn ($q, $ids) => $q->whereIn('sale_lines.distributor_id', $ids));
+    }
+
+    private function distributors()
+    {
+        return Distributor::query()->when($this->scope, fn ($q, $ids) => $q->whereIn('id', $ids));
     }
 
     private function build(CarbonImmutable $period): array
@@ -55,7 +72,7 @@ class DashboardData
 
     private function totals(CarbonImmutable $period): array
     {
-        $row = SaleLine::whereDate('period', $period)->toBase()->selectRaw('
+        $row = $this->sales()->whereDate('period', $period)->toBase()->selectRaw('
             COALESCE(SUM(units), 0) AS units, COALESCE(SUM(bonus_units), 0) AS bonus_units,
             COALESCE(SUM(value_exfp), 0) AS value_exfp, COALESCE(SUM(value_tp), 0) AS value_tp,
             COALESCE(SUM(value_exfp - units * cost_price), 0) AS gross_profit,
@@ -69,9 +86,9 @@ class DashboardData
     /** One row per distributor: has this month's file arrived, and where is it in the flow. */
     private function checklist(CarbonImmutable $period): array
     {
-        $imports = Import::whereDate('period', $period)->latest('id')->get(['id', 'distributor_id', 'status', 'period_from'])->unique('distributor_id')->keyBy('distributor_id');
+        $imports = Import::whereDate('period', $period)->when($this->scope, fn ($q, $ids) => $q->whereIn('distributor_id', $ids))->latest('id')->get(['id', 'distributor_id', 'status', 'period_from'])->unique('distributor_id')->keyBy('distributor_id');
 
-        return Distributor::orderBy('name')->get(['id', 'name', 'city'])->map(function (Distributor $d) use ($imports) {
+        return $this->distributors()->orderBy('name')->get(['id', 'name', 'city'])->map(function (Distributor $d) use ($imports) {
             $import = $imports->get($d->id);
             [$label, $tone] = match ($import?->status) {
                 Import::CONFIRMED => ['Confirmed', 'ok'],
@@ -90,7 +107,7 @@ class DashboardData
         $actions = [];
         $q = ['period' => $period->format('Y-m')];
         $month = $period->format('F');
-        $pending = Import::whereDate('period', $period)->where('status', '!=', Import::CONFIRMED)
+        $pending = Import::whereDate('period', $period)->where('status', '!=', Import::CONFIRMED)->when($this->scope, fn ($q, $ids) => $q->whereIn('distributor_id', $ids))
             ->with('distributor:id,name')->get(['id', 'distributor_id', 'status', 'checks', 'customers']);
         $unmapped = ImportRow::whereIn('import_id', $pending->pluck('id'))->whereNull('product_id')
             ->toBase()->selectRaw('import_id, COUNT(DISTINCT product_name) AS names')->groupBy('import_id')->pluck('names', 'import_id');
@@ -104,11 +121,11 @@ class DashboardData
                 : ['what' => "{$i->distributor->name} file", 'detail' => ($names ? $names.' product '.str('name')->plural($names).' not linked yet; ' : 'Uploaded; ').count($i->customers).' customers waiting for review', 'cta' => 'Review import', 'tone' => 'warn', 'url' => route('imports.show', $i)];
         }
 
-        foreach (Distributor::whereDoesntHave('imports', fn ($w) => $w->whereDate('period', $period))->orderBy('name')->get(['id', 'name']) as $d) {
+        foreach ($this->distributors()->whereDoesntHave('imports', fn ($w) => $w->whereDate('period', $period))->orderBy('name')->get(['id', 'name']) as $d) {
             $actions[] = ['what' => "{$d->name} file", 'detail' => "No file received yet for {$month}", 'cta' => 'Upload', 'tone' => 'mute', 'url' => route('imports.index', $q + ['distributor' => $d->id])];
         }
 
-        $noRep = SaleLine::whereDate('period', $period)->whereDoesntHave('customer.medicalReps')->distinct()->count('customer_id');
+        $noRep = $this->sales()->whereDate('period', $period)->whereDoesntHave('customer.medicalReps')->distinct()->count('customer_id');
         if ($noRep) {
             $actions[] = ['what' => 'Customers without a rep', 'detail' => "{$noRep} customers bought in {$month}; their incentive is on hold", 'cta' => 'Assign reps', 'tone' => 'warn', 'url' => route('customers.index', $q + ['status' => 'needs_rep'])];
         }
@@ -126,7 +143,7 @@ class DashboardData
     private function trend(CarbonImmutable $period): array
     {
         $from = $period->subMonths(5);
-        $rows = SaleLine::whereDate('period', '>=', $from)->whereDate('period', '<=', $period)
+        $rows = $this->sales()->whereDate('period', '>=', $from)->whereDate('period', '<=', $period)
             ->toBase()->selectRaw('period, SUM(value_exfp) AS value, SUM(units) AS units')->groupBy('period')->get()
             ->keyBy(fn ($r) => substr((string) $r->period, 0, 7));
 
@@ -139,7 +156,7 @@ class DashboardData
 
     private function byDistributor(CarbonImmutable $period): array
     {
-        return SaleLine::whereDate('period', $period)
+        return $this->sales()->whereDate('period', $period)
             ->join('distributors', 'distributors.id', '=', 'sale_lines.distributor_id')
             ->toBase()->selectRaw('distributors.name, SUM(sale_lines.value_exfp) AS value, SUM(sale_lines.units) AS units, COUNT(DISTINCT sale_lines.customer_id) AS customers')
             ->groupBy('distributors.id', 'distributors.name')->orderByDesc('value')->get()
@@ -154,18 +171,19 @@ class DashboardData
             ->join('medical_reps as m', 'm.id', '=', 'cr.medical_rep_id')
             ->join('territories as t', 't.id', '=', 'm.territory_id')
             ->whereDate('s.period', $period)
+            ->when($this->scope, fn ($q, $ids) => $q->whereIn('s.distributor_id', $ids))
             ->selectRaw('m.name, t.name AS territory, SUM(s.value_exfp * cr.share_percent / 100) AS value, SUM(s.incentive * cr.share_percent / 100) AS incentive')
             ->groupBy('m.id', 'm.name', 't.name')->orderByDesc('value')->get()
             ->map(fn ($r) => ['name' => $r->name, 'territory' => $r->territory, 'value' => (float) $r->value, 'incentive' => (float) $r->incentive])->all();
 
-        $waiting = (float) SaleLine::whereDate('period', $period)->whereDoesntHave('customer.medicalReps')->sum('incentive');
+        $waiting = (float) $this->sales()->whereDate('period', $period)->whereDoesntHave('customer.medicalReps')->sum('incentive');
 
         return ['rows' => $rows, 'waiting' => $waiting];
     }
 
     private function byProduct(CarbonImmutable $period): array
     {
-        return SaleLine::whereDate('period', $period)
+        return $this->sales()->whereDate('period', $period)
             ->join('products', 'products.id', '=', 'sale_lines.product_id')
             ->toBase()->selectRaw('products.name, SUM(sale_lines.units) AS units, SUM(sale_lines.bonus_units) AS bonus, SUM(sale_lines.value_exfp) AS value')
             ->groupBy('products.id', 'products.name')->orderByDesc('units')->get()
@@ -174,7 +192,7 @@ class DashboardData
 
     private function topCustomers(CarbonImmutable $period): array
     {
-        return SaleLine::whereDate('period', $period)
+        return $this->sales()->whereDate('period', $period)
             ->join('customers', 'customers.id', '=', 'sale_lines.customer_id')
             ->join('distributors', 'distributors.id', '=', 'sale_lines.distributor_id')
             ->toBase()->selectRaw('customers.name, customers.area, distributors.name AS distributor, SUM(sale_lines.units) AS units, SUM(sale_lines.value_tp) AS value')

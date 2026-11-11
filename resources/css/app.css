@@ -42,6 +42,8 @@
     --sky-mute-bg: #eef0f3;
     --sky-mute-fg: #4a5468;
     --sky-shadow: 0 1px 2px rgb(19 26 42 / 0.06);
+    /* Chart series, used in order (distributors, products). */
+    --sky-c1: #2558d7; --sky-c2: #0e9f9a; --sky-c3: #e8930c; --sky-c4: #7c5ce6; --sky-c5: #e2604f; --sky-c6: #1f9d61; --sky-c7: #64748b;
     color-scheme: light;
 }
 
@@ -73,6 +75,7 @@
     --sky-mute-bg: #252d40;
     --sky-mute-fg: #aab3c6;
     --sky-shadow: 0 1px 2px rgb(0 0 0 / 0.35);
+    --sky-c1: #7c9dff; --sky-c2: #3fd2c7; --sky-c3: #f6b545; --sky-c4: #a993ff; --sky-c5: #ff8c7d; --sky-c6: #55d38f; --sky-c7: #9aa6bb;
     color-scheme: dark;
 }
 
@@ -172,6 +175,14 @@
     /* Bars */
     .bar-track { @apply block h-3.5 overflow-hidden rounded-[7px] bg-hair; }
     .bar-fill { @apply block h-full rounded-[7px] bg-accent; }
+
+    /* Dashboard */
+    .hero { @apply relative overflow-hidden rounded-[24px] bg-bar p-6 text-white sm:p-7; box-shadow: var(--sky-shadow); }
+    .hero::after { content: ''; position: absolute; inset: auto -120px -160px auto; width: 420px; height: 420px; border-radius: 50%;
+        background: radial-gradient(closest-side, rgb(157 184 255 / 0.22), transparent); pointer-events: none; }
+    .stat-icon { @apply flex size-9 flex-none items-center justify-center rounded-xl bg-soft text-accent-text; }
+    .rank { @apply flex size-8 flex-none items-center justify-center rounded-full bg-seg text-[13px] font-extrabold text-nav; }
+    .dot { @apply inline-block size-2.5 flex-none rounded-full; }
 
     /* Dark sticky action bar (import review) */
     .action-bar { @apply sticky bottom-3 flex flex-wrap items-center justify-between gap-3.5 rounded-2xl bg-bar px-[18px] py-3.5 text-white; }
