@@ -109,7 +109,7 @@ final class MatrixParser implements LayoutParser
 
                         if ($qty != 0.0) {
                             $col = $this->nearest($columns, $w['x0']);
-                            $lines[] = ['customer_code' => null, 'customer' => $name, 'area' => $area, 'product' => $col['label'] ?: 'UNLABELLED@'.$col['x'],
+                            $lines[] = ['customer_code' => null, 'customer' => $name, 'area' => $area, 'product_code' => null, 'product' => $col['label'] ?: 'UNLABELLED@'.$col['x'],
                                 'units' => $qty, 'bonus' => null, 'trade_price' => null, 'value' => null, '_x' => $col['x'], '_key' => $key];
                         }
                     }

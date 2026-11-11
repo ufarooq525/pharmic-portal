@@ -11,7 +11,6 @@ use Carbon\CarbonImmutable;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 
 /** Reads an uploaded distributor file and holds it for review. Nothing posts until it is confirmed. */
 class ReadImport
@@ -23,9 +22,11 @@ class ReadImport
         $path = $file->store('imports/'.$period->format('Y-m'));
         $parsed = $this->reader->read(Storage::path($path));
         $checks = $this->checks($parsed, $distributor, $period);
-        $aliases = $distributor->aliases()->pluck('product_id', 'name_in_file');
+        $aliases = $distributor->aliases()->get(['name_in_file', 'code_in_file', 'product_id']);
+        $byName = $aliases->pluck('product_id', 'name_in_file');
+        $byCode = $aliases->whereNotNull('code_in_file')->pluck('product_id', 'code_in_file');
 
-        return DB::transaction(function () use ($distributor, $period, $file, $user, $path, $parsed, $checks, $aliases) {
+        return DB::transaction(function () use ($distributor, $period, $file, $user, $path, $parsed, $checks, $byName, $byCode) {
             // A new upload replaces an earlier one that was never confirmed.
             Import::where('distributor_id', $distributor->id)->whereDate('period', $period)->where('status', '!=', Import::CONFIRMED)->get()->each->delete();
 
@@ -53,8 +54,10 @@ class ReadImport
                 'customer_code' => $line['customer_code'],
                 'customer_name' => $line['customer'],
                 'area' => $line['area'],
+                'product_code' => $line['product_code'] ?? null,
                 'product_name' => $line['product'],
-                'product_id' => $aliases[$line['product']] ?? null,
+                // A spelling already linked wins; the distributor's item code catches a re-spelled name.
+                'product_id' => $byName[$line['product']] ?? (isset($line['product_code']) ? $byCode[$line['product_code']] ?? null : null),
                 'units' => $line['units'],
                 'bonus' => $line['bonus'],
                 'trade_price' => $line['trade_price'],
@@ -68,20 +71,33 @@ class ReadImport
     /** @return list<array{key: string, ok: bool, message: string}> */
     private function checks(ParsedFile $parsed, Distributor $distributor, CarbonImmutable $period): array
     {
-        $sameMonth = $parsed->periodFrom !== null && str_starts_with($parsed->periodFrom, $period->format('Y-m'));
-        $firstWord = Str::of($distributor->name)->before(' ')->upper()->toString();
-        $sameName = str_contains(mb_strtoupper($parsed->distributorInFile), $firstWord);
+        $month = $period->format('Y-m');
+        $from = $parsed->periodFrom;
+        $to = $parsed->periodTo ?? $from;
+        $sameMonth = $from !== null && str_starts_with($from, $month) && str_starts_with((string) $to, $month);
+        $sameName = $distributor->headerMatches($parsed->distributorInFile);
+        $sameLayout = $distributor->layout === null || $distributor->layout === $parsed->layout;
+        $layout = Distributor::LAYOUTS[$parsed->layout] ?? $parsed->layout;
 
         return [
             ['key' => 'totals', 'ok' => $parsed->totalsMatch(), 'message' => $parsed->totalsMatch()
                 ? 'Units and value match the grand total printed in the file.'
                 : "Parsed {$parsed->parsedUnits()} units but the file's grand total says {$parsed->fileUnits}."],
-            ['key' => 'period', 'ok' => $sameMonth, 'message' => $sameMonth
-                ? 'The file covers '.$period->format('F Y').'.'
-                : 'The file covers '.($parsed->periodFrom ?? 'an unknown period').', not '.$period->format('F Y').'.'],
+            ['key' => 'period', 'ok' => $sameMonth, 'message' => match (true) {
+                $sameMonth => 'The file covers '.$period->format('F Y').' only.',
+                $from === null => 'The file does not print the dates it covers.',
+                str_starts_with($from, $month) => "The file runs from {$from} to {$to}. Export one month only, so other months are not counted twice.",
+                default => "The file covers {$from} to {$to}, not ".$period->format('F Y').'.',
+            }],
             ['key' => 'distributor', 'ok' => $sameName, 'message' => $sameName
-                ? 'The distributor name matches the file header.'
+                ? 'The name at the top of the file matches '.$distributor->name.'.'
                 : "The file header reads “{$parsed->distributorInFile}”, not {$distributor->name}."],
+            ['key' => 'format', 'ok' => $sameLayout, 'message' => match (true) {
+                $distributor->layout === null => "First file from {$distributor->name}: {$layout}. This becomes its saved format when confirmed.",
+                $sameLayout => "Same report format as {$distributor->name}’s earlier files.",
+                default => "{$distributor->name} normally sends ".(Distributor::LAYOUTS[$distributor->layout] ?? $distributor->layout)
+                    .", but this file is {$layout}. Check it is the right report, or update the format on the Distributors page.",
+            }],
         ];
     }
 }

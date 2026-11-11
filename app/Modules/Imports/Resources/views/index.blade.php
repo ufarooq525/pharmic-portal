@@ -1,6 +1,6 @@
 @php
     $statuses = ['confirmed' => ['Confirmed', 'ok'], 'needs_review' => ['Needs review', 'warn'], 'blocked' => ['Blocked', 'bad']];
-    $layouts = ['matrix' => 'SoftTouch product grid', 'lineitem' => 'Line items with bonus', 'monthly' => 'Monthly columns'];
+    $layouts = \App\Modules\Distribution\Models\Distributor::LAYOUTS;
     $canUpload = auth()->user()->hasRole('accounts', 'data_entry');
     $q = ['period' => $period->format('Y-m')];
     // Default to the first distributor whose file is not confirmed yet.

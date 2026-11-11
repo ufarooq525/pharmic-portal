@@ -5,7 +5,7 @@ namespace App\Modules\Imports\Parsers;
 /**
  * Normalised result of reading one distributor file, whatever its layout.
  *
- * Each line: customer_code, customer, area, product, units, bonus, trade_price, value.
+ * Each line: customer_code, customer, area, product_code (the distributor's own item code, if printed), product, units, bonus, trade_price, value.
  * Each customer: code, name, area (includes customers listed with zero units).
  */
 final class ParsedFile

@@ -35,6 +35,7 @@ class ConfirmImport
             Import::where('distributor_id', $import->distributor_id)->whereDate('period', $period)
                 ->where('status', Import::CONFIRMED)->get()->each(fn (Import $old) => $this->reverse($old));
 
+            $distributor = $import->distributor;
             $customers = $this->registerCustomers($import, $period);
             $products = Product::with('rates')->findMany($import->rows()->distinct()->pluck('product_id'))->keyBy('id');
 
@@ -42,7 +43,7 @@ class ConfirmImport
                 $rate = $products[$row->product_id]->rateOn($period->endOfMonth())
                     ?? throw new DomainException("No price is set for {$products[$row->product_id]->name} in {$period->format('F Y')}.");
 
-                $bonus = $row->bonus ?? $rate->schemeBonus($row->units);
+                $bonus = $distributor->bonusFor($row->bonus, $rate->schemeBonus($row->units));
                 $valueTp = $row->value ?? round($row->units * $rate->trade_price, 2);
                 $valueExfp = round($row->units * $rate->exfp_price, 2);
 
@@ -54,7 +55,7 @@ class ConfirmImport
                     'period' => $period,
                     'units' => $row->units,
                     'bonus_units' => $bonus,
-                    'bonus_from_file' => $row->bonus !== null,
+                    'bonus_from_file' => $distributor->bonusIsFromFile($row->bonus),
                     'trade_price' => $row->trade_price ?? $rate->trade_price,
                     'exfp_price' => $rate->exfp_price,
                     'cost_price' => $rate->cost_price,
@@ -77,6 +78,11 @@ class ConfirmImport
                     'moved_on' => $period->endOfMonth(),
                 ]);
             }
+
+            // The first confirmed file fixes the distributor's format; later files are checked against it.
+            $distributor->layout ??= $import->layout;
+            $distributor->header_name ??= $import->distributor_in_file ?: null;
+            $distributor->save();
 
             $import->update(['status' => Import::CONFIRMED, 'confirmed_by' => $user->id, 'confirmed_at' => now()]);
 

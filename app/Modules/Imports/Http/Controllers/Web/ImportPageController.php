@@ -79,9 +79,13 @@ class ImportPageController
         ]);
 
         DB::transaction(function () use ($import, $data) {
+            // Keep the distributor's item code with the link when the file prints exactly one for this name,
+            // so a later file that re-spells the product is still recognised.
+            $codes = $import->rows()->where('product_name', $data['product_name'])->whereNotNull('product_code')->distinct()->pluck('product_code');
+
             ProductAlias::updateOrCreate(
                 ['distributor_id' => $import->distributor_id, 'name_in_file' => $data['product_name']],
-                ['product_id' => $data['product_id']],
+                ['product_id' => $data['product_id'], 'code_in_file' => $codes->count() === 1 ? $codes->first() : null],
             );
             $import->rows()->where('product_name', $data['product_name'])->update(['product_id' => $data['product_id']]);
         });

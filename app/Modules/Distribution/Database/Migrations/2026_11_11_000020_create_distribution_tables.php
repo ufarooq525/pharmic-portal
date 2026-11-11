@@ -13,7 +13,10 @@ return new class extends Migration
             $table->string('name');
             $table->string('city');
             $table->string('phone', 30)->nullable();
-            $table->string('layout', 20)->nullable();           // matrix | lineitem | monthly
+            $table->string('layout', 20)->nullable();           // matrix | lineitem | monthly; saved from the first confirmed file
+            $table->string('header_name')->nullable();          // name as printed at the top of its PDF
+            $table->string('bonus_source', 10)->default('file'); // file | scheme | none
+            $table->text('format_notes')->nullable();
             $table->decimal('opening_balance', 14, 2)->default(0);
             $table->timestamps();
         });
@@ -62,9 +65,11 @@ return new class extends Migration
             $table->id();
             $table->foreignId('distributor_id')->constrained();
             $table->string('name_in_file');
+            $table->string('code_in_file', 30)->nullable();     // the distributor's own item code, where its file prints one
             $table->foreignId('product_id')->constrained();
             $table->timestamps();
             $table->unique(['distributor_id', 'name_in_file']);
+            $table->index(['distributor_id', 'code_in_file']);
         });
     }
 

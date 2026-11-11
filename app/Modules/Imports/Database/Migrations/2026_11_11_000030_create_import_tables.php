@@ -38,6 +38,7 @@ return new class extends Migration
             $table->string('customer_code', 30)->nullable();
             $table->string('customer_name');
             $table->string('area')->nullable();
+            $table->string('product_code', 30)->nullable();
             $table->string('product_name');
             $table->foreignId('product_id')->nullable()->constrained();
             $table->decimal('units', 12, 2);

@@ -45,12 +45,17 @@ class DatabaseSeeder extends Seeder
             StockMovement::firstOrCreate(['product_id' => $product->id, 'type' => StockMovement::OPENING], ['units' => $opening, 'moved_on' => '2026-10-01', 'note' => 'Opening stock from the Excel sheet']);
         }
 
+        // Each distributor's file profile, read from its October 2026 PDF (December 2025 for Saaj).
         foreach ([
-            ['Hamdan Enterprises', 'Mardan', 'matrix'], ['Monal Enterprises', 'Batkhela', 'matrix'], ['Saaj Enterprises', 'Swabi', 'matrix'],
-            ['Irfan Enterprises', 'Timergara', 'lineitem'], ['Umar Drug Agencies', 'Peshawar', 'lineitem'], ['Friends Enterprises', 'Buner', 'monthly'],
-            ['Umer Enterprises', 'Timergara', null],
-        ] as [$name, $city, $layout]) {
-            Distributor::updateOrCreate(['name' => $name], ['city' => $city, 'layout' => $layout]);
+            ['Hamdan Enterprises', 'Mardan', 'matrix', 'HAMDAN ENTERPRISES', 'SoftTouch product grid. No customer codes, no bonus and no line values: prices come from the grand-total row. "(N)" columns are new-price stock of the same product.'],
+            ['Monal Enterprises', 'Batkhela', 'matrix', 'MONAL ENTERPRISES', 'SoftTouch product grid with its own column order. No customer codes, no bonus and no line values.'],
+            ['Saaj Enterprises', 'Swabi', 'matrix', 'SAAJ ENTERPRISES', 'SoftTouch product grid. Old and "N(R)" columns of the same product sit side by side; both link to one product.'],
+            ['Irfan Enterprises', 'Timergara', 'lineitem', 'IRFAN ENTERPRISES', 'SoftTouch Sale Report: customer codes, its own item codes, bonus, TP amount and net amount.'],
+            ['Umar Drug Agencies', 'Peshawar', 'lineitem', 'UMAR DRUG AGENCIES', 'SoftTouch Sale Report with customer and item codes and bonus. Returns print negative units and bonus; some lines are bonus only.'],
+            ['Friends Enterprises', 'Buner', 'monthly', 'FRIENDS ENTERPRISES', 'Customer annual sales with Jan–Dec columns, T.P and amount. No bonus column. Export one month only (from and to dates in the same month).'],
+            ['Umer Enterprises', 'Timergara', null, null, null],
+        ] as [$name, $city, $layout, $header, $notes]) {
+            Distributor::updateOrCreate(['name' => $name], ['city' => $city, 'layout' => $layout, 'header_name' => $header, 'bonus_source' => Distributor::BONUS_FILE, 'format_notes' => $notes]);
         }
 
         foreach ([

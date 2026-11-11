@@ -2,7 +2,8 @@
     $t = $totals;
     $statusChip = ['confirmed' => ['Confirmed', 'ok'], 'needs_review' => ['Needs review', 'warn'], 'blocked' => ['Blocked', 'bad']][$import->status];
     $attention = collect($customers)->where('attention', true)->count();
-    $layouts = ['matrix' => 'Product grid (SoftTouch)', 'lineitem' => 'Line items with bonus', 'monthly' => 'Monthly columns'];
+    $layouts = \App\Modules\Distribution\Models\Distributor::LAYOUTS;
+    $bonusSource = $import->distributor->bonus_source;
 @endphp
 <x-layouts.app title="{{ $import->distributor->name }} · {{ $period->format('F Y') }}" description="Review of the customer-wise file from {{ $import->distributor->name }} for {{ $period->format('F Y') }}.">
     <x-page-header :title="$import->distributor->name.' · '.$period->format('F Y')">
@@ -12,7 +13,7 @@
     </x-page-header>
     <p class="-mt-3 text-muted">{{ $import->original_name }} · {{ $layouts[$import->layout] ?? $import->layout }} · header reads “{{ $import->distributor_in_file }}”</p>
 
-    <ul class="grid gap-2.5 sm:grid-cols-3" aria-label="Checks">
+    <ul class="grid gap-2.5 sm:grid-cols-2 xl:grid-cols-4" aria-label="Checks">
         @foreach ($import->checks as $check)
             <li class="flex items-start gap-2.5 rounded-[14px] px-3.5 py-[11px] font-semibold {{ $check['ok'] ? 'bg-ok-soft text-ok' : 'bg-bad-soft text-bad' }}">
                 <span aria-hidden="true" class="font-extrabold">{{ $check['ok'] ? '✓' : '✕' }}</span>
@@ -84,7 +85,7 @@
                         <div class="mb-2 rounded-xl bg-sunk py-1 pl-7 pr-3">
                             @forelse ($c['lines'] as $l)
                                 <div class="grid grid-cols-[minmax(170px,1.5fr)_minmax(140px,1.3fr)_60px_60px_100px_120px_120px_minmax(150px,1.3fr)] gap-3 border-b border-hair py-2 text-[13px] last:border-0 {{ $l['product'] ? '' : 'text-bad' }}">
-                                    <span class="font-mono text-[12px]">{{ $l['name_in_file'] }}</span>
+                                    <span class="font-mono text-[12px]">{{ $l['code_in_file'] ? $l['code_in_file'].' · ' : '' }}{{ $l['name_in_file'] }}</span>
                                     <span class="font-semibold">{{ $l['product'] ?? 'Not linked' }}</span>
                                     <span class="num text-right">{{ fmt_num($l['units']) }}</span>
                                     <span class="num text-right">{{ fmt_num($l['bonus']) }}</span>
@@ -103,7 +104,7 @@
                 @endforelse
             </div>
         </div>
-        <p class="text-[12px] text-muted">Click a customer to see its product lines. Where the file has no bonus column, bonus follows the product’s scheme. Taxes use each product’s rates for {{ $period->format('F Y') }}.</p>
+        <p class="text-[12px] text-muted">Click a customer to see its product lines. Bonus: {{ lcfirst(\App\Modules\Distribution\Models\Distributor::BONUS_SOURCES[$bonusSource] ?? $bonusSource) }} (<a href="{{ route('distributors.index', ['distributor' => $import->distributor_id]) }}">change</a>). Taxes use each product’s rates for {{ $period->format('F Y') }}.</p>
     </section>
 
     <div class="action-bar">

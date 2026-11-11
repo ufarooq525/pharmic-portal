@@ -41,6 +41,23 @@ class ProductAliasSeeder extends Seeder
         ],
     ];
 
+    /** The distributor's own item codes, printed next to the name in line-item and annual files. */
+    private const CODES = [
+        'Irfan Enterprises' => [
+            'GYNOFOL TAB' => '955', 'EQUATE -V- WASH' => '962', 'VELFER TAB' => '952', 'STARK-D SACHET' => '957', 'WIZ-G TAB' => '965',
+            'ENCINTA CAP' => '959', 'PROLIF-D TAB' => '961', 'BIORON TAB' => '958',
+        ],
+        'Umar Drug Agencies' => [
+            'PROLIF-D TAB NEW' => '1119', 'PROLIF.D TAB' => '499', 'GYNOFOL TAB' => '501', 'GYNOFOL 1000MCG TAB NEW' => '1231', 'BIORON TAB' => '970',
+            'WIZ-G TAB' => '678', 'FEMIL TABS NEW' => '1188', "FEMIL TAB 10'S" => '723', 'VELFER TAB NEW' => '1155', 'VELFER TAB' => '646',
+            'HAVOROIDS CAP' => '495', 'ENCINTA CAP' => '821',
+        ],
+        'Friends Enterprises' => [
+            'Velfer Tab' => '679', 'PRVIEM MILK' => '1143', 'Gynofol 1000mcg Tab' => '676', 'Prolif.D Tab' => '678', 'STARK-D SACHET(10000IU)' => '796',
+            'FemIl Tab' => '675', 'BIORON TAB' => '927', 'ENCINTA CAP' => '712', 'Wiz-G Tab' => '680', 'HAVOROIDS CAP' => '795',
+        ],
+    ];
+
     public function run(): void
     {
         $products = Product::pluck('id', 'code');
@@ -55,7 +72,7 @@ class ProductAliasSeeder extends Seeder
             foreach ($aliases as $nameInFile => $code) {
                 ProductAlias::updateOrCreate(
                     ['distributor_id' => $distributor->id, 'name_in_file' => $nameInFile],
-                    ['product_id' => $products[$code]],
+                    ['product_id' => $products[$code], 'code_in_file' => self::CODES[$distributorName][$nameInFile] ?? null],
                 );
             }
         }

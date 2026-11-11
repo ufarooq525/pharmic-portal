@@ -58,6 +58,29 @@ php artisan serve
 Sign in with `owner@example.com` and the `SEED_OWNER_PASSWORD` you set (it falls back to
 `change-me-now`; change it on the Users page).
 
+## Distributor formats
+
+Each distributor's software prints a different report. The portal reads three families and keeps a
+profile per distributor on the **Distributors** page:
+
+| Distributor | Report | Customer codes | Item codes | Bonus in file | Values |
+|---|---|---|---|---|---|
+| Hamdan, Monal, Saaj | SoftTouch product grid, each with its own column order and spellings | No | No | No | From the grand-total row |
+| Irfan, Umar Drug | SoftTouch "Sale Report" (Item / Customer / Area lines) | Yes | Yes | Yes (returns negative) | TP and net amount per line |
+| Friends | Customer annual sales, Jan–Dec columns | Yes | Yes | No | T.P and amount per line |
+
+Every upload is checked for: totals against the file's grand total, the month (from and to dates
+must fall in the chosen month, so a Jan–Dec export can't double count), the name at the top of the
+file, and the report format against the distributor's saved one. The format and header are saved
+from the first confirmed file if not set.
+
+Product names are linked once per distributor. Where the file prints item codes, the code is kept
+with the link, so a re-spelled name with a known code is still recognised. Codes are per
+distributor (676 is Gynofol at Friends but Equate Flora at Umar Drug).
+
+Bonus per distributor: the bonus printed in the file (the product scheme where none is printed,
+the default), always the scheme, or only what the file prints.
+
 ## Load the October 2026 files
 
 From the project folder, pointing at the "Pharmic LH" folder:

@@ -106,6 +106,8 @@ class PortalTest extends TestCase
         $this->get('/inventory?period=2026-10')->assertOk()->assertSee('Gynofol Tab');
         $this->get('/products?period=2026-10')->assertOk()->assertSee('withholding tax rate');
         $this->get('/users')->assertOk()->assertSee('What each role can do');
+        $this->get('/distributors?distributor='.Distributor::where('name', 'Irfan Enterprises')->value('id'))->assertOk()
+            ->assertSee('IRFAN ENTERPRISES')->assertSee('GYNOFOL TAB')->assertSee('955');
 
         foreach (['sales', 'customers', 'bonus', 'incentive', 'taxes'] as $type) {
             $this->get("/reports/{$type}?period=2026-10")->assertOk();
@@ -149,5 +151,59 @@ class PortalTest extends TestCase
         $this->actingAs($this->owner())->put("/customers/{$customer->id}/reps", ['rep_1' => $a, 'rep_2' => $b])->assertSessionHasNoErrors();
 
         $this->assertSame([50, 50], $customer->medicalReps()->pluck('share_percent')->map(fn ($v) => (int) $v)->all());
+    }
+
+    public function test_bonus_follows_each_distributors_setting(): void
+    {
+        $irfan = Distributor::where('name', 'Irfan Enterprises')->firstOrFail();
+        $irfan->update(['bonus_source' => Distributor::BONUS_SCHEME]);
+        $scheme = Product::where('code', 'GYN')->firstOrFail()->rateOn(now()->setDate(2026, 10, 31))->schemeBonus(10);
+
+        app(ConfirmImport::class)->handle($this->import(), $this->owner());
+
+        $sale = SaleLine::where('units', 10)->firstOrFail();
+        $this->assertEqualsWithDelta($scheme, (float) $sale->bonus_units, 0.01);
+        $this->assertFalse((bool) $sale->bonus_from_file);
+
+        $this->assertSame(2.0, (new Distributor(['bonus_source' => Distributor::BONUS_FILE]))->bonusFor(2.0, 5));
+        $this->assertSame(5.0, (new Distributor(['bonus_source' => Distributor::BONUS_FILE]))->bonusFor(null, 5));
+        $this->assertSame(0.0, (new Distributor(['bonus_source' => Distributor::BONUS_NONE]))->bonusFor(null, 5));
+    }
+
+    public function test_the_header_check_uses_the_saved_name_and_the_first_file_saves_the_format(): void
+    {
+        $irfan = Distributor::where('name', 'Irfan Enterprises')->firstOrFail();
+        $this->assertTrue($irfan->headerMatches('IRFAN  ENTERPRISES Timergarah'));
+        $this->assertFalse($irfan->headerMatches('HAMDAN ENTERPRISES'));
+
+        $irfan->update(['layout' => null, 'header_name' => null]);
+        app(ConfirmImport::class)->handle($this->import(), $this->owner());
+
+        $irfan->refresh();
+        $this->assertSame('lineitem', $irfan->layout);
+        $this->assertSame('IRFAN ENTERPRISES Timergarah', $irfan->header_name);
+    }
+
+    public function test_a_link_keeps_the_distributors_item_code(): void
+    {
+        $import = $this->import(withUnknownProduct: true);
+        $import->rows()->where('product_name', 'EQUAT FLORA')->update(['product_code' => '999']);
+
+        $this->actingAs($this->owner())
+            ->post("/imports/{$import->id}/map", ['product_name' => 'EQUAT FLORA', 'product_id' => Product::where('code', 'EQU')->value('id')])
+            ->assertSessionHasNoErrors();
+
+        $this->assertDatabaseHas('product_aliases', ['name_in_file' => 'EQUAT FLORA', 'code_in_file' => '999']);
+    }
+
+    public function test_only_the_owner_edits_a_distributor_profile(): void
+    {
+        $irfan = Distributor::where('name', 'Irfan Enterprises')->firstOrFail();
+        $profile = ['name' => 'Irfan Enterprises', 'city' => 'Timergara', 'header_name' => 'IRFAN ENTERPRISES', 'layout' => 'lineitem', 'bonus_source' => 'none'];
+
+        $this->actingAs(User::factory()->role('accounts')->create())->put("/distributors/{$irfan->id}", $profile)->assertForbidden();
+        $this->actingAs($this->owner())->put("/distributors/{$irfan->id}", $profile)->assertSessionHasNoErrors();
+
+        $this->assertSame('none', $irfan->fresh()->bonus_source);
     }
 }

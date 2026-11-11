@@ -32,14 +32,14 @@ final class MonthlyParser implements LayoutParser
                 preg_match_all("/$n/", $rows[$i + 1] ?? '', $v);
                 $units = $u[0] ? PdfText::number(end($u[0])) : null;
                 $value = $v[0] ? PdfText::number(end($v[0])) : null;
-            } elseif ($customer && ! str_starts_with(trim($row), 'Total') && preg_match("/^\s*\d+\s+(.+?)\s{2,}($n)\s+(.*)$/", $row, $m)) {
-                preg_match_all("/$n/", $m[3], $nums);
+            } elseif ($customer && ! str_starts_with(trim($row), 'Total') && preg_match("/^\s*(\d+)\s+(.+?)\s{2,}($n)\s+(.*)$/", $row, $m)) {
+                preg_match_all("/$n/", $m[4], $nums);
 
                 if (count($nums[0]) >= 3) {
                     $lines[] = [
                         'customer_code' => $customer['code'], 'customer' => $customer['name'], 'area' => $customer['area'],
-                        'product' => trim($m[1]), 'units' => PdfText::number($nums[0][count($nums[0]) - 2]), 'bonus' => null,
-                        'trade_price' => PdfText::number($m[2]), 'value' => PdfText::number(end($nums[0])),
+                        'product_code' => $m[1], 'product' => trim($m[2]), 'units' => PdfText::number($nums[0][count($nums[0]) - 2]), 'bonus' => null,
+                        'trade_price' => PdfText::number($m[3]), 'value' => PdfText::number(end($nums[0])),
                     ];
                 }
             }

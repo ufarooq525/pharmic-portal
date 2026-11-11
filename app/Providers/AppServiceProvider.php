@@ -34,6 +34,7 @@ class AppServiceProvider extends ServiceProvider
             $items = [
                 ['dashboard', 'Dashboard', 'dashboard', null],
                 ['imports.index', 'Imports', 'imports.*', $pending ?: null],
+                ['distributors.index', 'Distributors', 'distributors.*', null],
                 ['customers.index', 'Customers', 'customers.*', null],
                 ['inventory.index', 'Inventory', 'inventory.*', null],
                 ['reports.show', 'Reports', 'reports.*', null],

@@ -4,6 +4,7 @@ namespace App\Modules\Imports\Services;
 
 use App\Modules\Catalog\Models\Product;
 use App\Modules\Distribution\Models\Customer;
+use App\Modules\Distribution\Models\Distributor;
 use App\Modules\Imports\Models\Import;
 use Carbon\CarbonImmutable;
 
@@ -17,6 +18,8 @@ class ImportPreview
     public function build(Import $import): array
     {
         $period = CarbonImmutable::parse($import->period)->endOfMonth();
+        $distributor = $import->distributor;
+        $checkBonus = $distributor->bonus_source === Distributor::BONUS_FILE;
         $rows = $import->rows()->get();
         $products = Product::with('rates')->findMany($rows->pluck('product_id')->filter()->unique())->keyBy('id');
         $register = Customer::where('distributor_id', $import->distributor_id)->with('medicalReps:id,name')->get()->keyBy('match_key');
@@ -36,7 +39,7 @@ class ImportPreview
                 $product = $row->product_id ? $products->get($row->product_id) : null;
                 $rate = $product?->rateOn($period);
                 $scheme = $rate?->schemeBonus($row->units) ?? 0;
-                $bonus = $row->bonus ?? $scheme;
+                $bonus = $distributor->bonusFor($row->bonus, $scheme);
                 $value = $row->value ?? ($rate ? round($row->units * $rate->trade_price, 2) : 0);
                 $st = $rate ? round($value * $rate->sales_tax_rate / 100, 2) : 0;
                 $wht = $rate ? round($value * $rate->withholding_tax_rate / 100, 2) : 0;
@@ -48,15 +51,15 @@ class ImportPreview
                 } elseif ($row->units < 0) {
                     $flags['return'] = true;
                     $note = 'Return, adds stock back';
-                } elseif ($row->bonus !== null && $row->units > 0 && (int) $row->bonus !== $scheme) {
+                } elseif ($checkBonus && $row->bonus !== null && $row->units > 0 && (int) $row->bonus !== $scheme) {
                     $flags['bonus'] = true;
                     $note = 'Bonus '.fmt_num($row->bonus).' vs scheme '.$scheme;
-                } elseif ($row->bonus === null && $scheme > 0) {
+                } elseif (! $distributor->bonusIsFromFile($row->bonus) && $bonus > 0) {
                     $note = "Bonus by scheme {$rate->bonus_buy}+{$rate->bonus_free}";
                 }
 
                 $lines[] = [
-                    'name_in_file' => $row->product_name, 'product' => $product?->name, 'units' => $row->units, 'bonus' => $bonus,
+                    'code_in_file' => $row->product_code, 'name_in_file' => $row->product_name, 'product' => $product?->name, 'units' => $row->units, 'bonus' => $bonus,
                     'value' => $value, 'sales_tax_rate' => $rate?->sales_tax_rate, 'sales_tax' => $st,
                     'withholding_tax_rate' => $rate?->withholding_tax_rate, 'withholding_tax' => $wht, 'note' => $note,
                 ];
