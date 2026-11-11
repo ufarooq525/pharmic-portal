@@ -46,7 +46,7 @@
             @endif
         </section>
     @elseif ($import->isConfirmed() && $canReverse)
-        <p class="m-0 rounded-[14px] bg-sunk px-3.5 py-3 text-[13px] text-muted">Posted by mistake? “Undo this import” at the bottom takes its sales, stock movements and ledger entry back out. Then upload the right file.</p>
+        <p class="m-0 rounded-[14px] bg-sunk px-3.5 py-3 text-[13px] text-muted">Posted by mistake? “Revert import” at the bottom takes its sales back out, returns the units to stock, cancels any invoice issued for the month with a credit note, and removes customers this file added. Keep the file to fix and confirm again, or remove it and upload the right one.</p>
     @endif
 
     <ul class="grid gap-2.5 sm:grid-cols-2 xl:grid-cols-4" aria-label="Checks">
@@ -151,9 +151,15 @@
                 <button class="btn btn-go">Confirm and post</button>
             </form>
         @elseif ($canReverse)
-            <form method="post" action="{{ route('imports.reverse', $import) }}">
+            <form method="post" action="{{ route('imports.reverse', $import) }}" class="flex flex-wrap items-center gap-2"
+                  data-confirm="Revert this import? Its sales come out, its {{ fmt_num($t['units'] + $t['bonus']) }} units go back into stock, and any invoice already issued for {{ $period->format('F') }} is cancelled with a credit note.">
                 @csrf
-                <button class="btn border-transparent bg-bad-soft text-bad">Undo this import</button>
+                <label for="revert-mode" class="sr-only">After reverting</label>
+                <select id="revert-mode" name="remove_file" class="field min-h-10 w-auto border-white/25 bg-transparent py-1.5 text-white [&>option]:text-ink">
+                    <option value="0">Keep the file for review</option>
+                    <option value="1">Remove the file too</option>
+                </select>
+                <button class="btn border-transparent bg-bad-soft text-bad" data-busy-label="Reverting…">Revert import</button>
             </form>
         @else
             <span class="font-bold">

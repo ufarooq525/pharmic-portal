@@ -38,6 +38,19 @@
                     <div class="flex flex-wrap gap-2">
                         <a href="{{ route('imports.show', $currentImport) }}" class="btn btn-primary">{{ $currentImport->status === 'confirmed' ? 'Open the customer-wise data' : 'Review and confirm' }}</a>
                         <a href="{{ route('imports.file', $currentImport) }}" class="btn">Open the PDF</a>
+                        @if ($currentImport->status === 'confirmed' && auth()->user()->hasRole())
+                            <form method="post" action="{{ route('imports.reverse', $currentImport) }}" data-confirm="Revert {{ $current->name }}’s {{ $period->format('F') }} import and remove the file? Its sales come out, the units go back into stock and any invoice for the month is cancelled with a credit note.">
+                                @csrf
+                                <input type="hidden" name="remove_file" value="1">
+                                <button class="btn border-transparent bg-bad-soft text-bad" data-busy-label="Reverting…">Revert and remove</button>
+                            </form>
+                        @elseif ($currentImport->status !== 'confirmed' && $canUpload)
+                            <form method="post" action="{{ route('imports.discard', $currentImport) }}" data-confirm="Discard this file? Nothing has been posted from it.">
+                                @csrf
+                                @method('delete')
+                                <button class="btn" data-busy-label="Discarding…">Discard</button>
+                            </form>
+                        @endif
                     </div>
                     @php($failed = collect($currentImport->checks)->reject(fn ($c) => $c['ok']))
                     @if ($failed->isNotEmpty() && $currentImport->status !== 'confirmed')

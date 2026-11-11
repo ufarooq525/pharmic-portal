@@ -3,6 +3,8 @@
 namespace App\Modules\Imports\Services;
 
 use App\Models\User;
+use App\Modules\Billing\Models\Invoice;
+use App\Modules\Billing\Services\InvoiceService;
 use App\Modules\Catalog\Models\Product;
 use App\Modules\Distribution\Models\Customer;
 use App\Modules\Imports\Models\Import;
@@ -33,7 +35,7 @@ class ConfirmImport
 
             // Re-importing a month replaces the earlier confirmed file; it never doubles it.
             Import::where('distributor_id', $import->distributor_id)->whereDate('period', $period)
-                ->where('status', Import::CONFIRMED)->get()->each(fn (Import $old) => $this->reverse($old));
+                ->where('status', Import::CONFIRMED)->get()->each(fn (Import $old) => $this->reverse($old, $user));
 
             $distributor = $import->distributor;
             $customers = $this->registerCustomers($import, $period);
@@ -90,12 +92,52 @@ class ConfirmImport
         });
     }
 
-    /** Undo a confirmed import: its sales and stock movements go; customers stay in the register. */
-    public function reverse(Import $import): void
+    /**
+     * Undo a confirmed import cleanly, all or nothing:
+     *  - its sale lines and stock movements are removed (sold and bonus units go back into stock);
+     *  - any invoice already issued for that distributor and month is cancelled with a credit note;
+     *  - customers this file added, that have no other sales or invoices, leave the register again;
+     *  - every other customer's "last seen" month is worked out again from their remaining sales.
+     * The import goes back to review, so it can be fixed and confirmed again, or discarded.
+     *
+     * @return array{lines: int, units: float, invoices: list<string>, customers: int}
+     */
+    public function reverse(Import $import, ?User $user = null): array
     {
-        SaleLine::where('import_id', $import->id)->delete();
-        StockMovement::where('import_id', $import->id)->delete();
-        $import->update(['status' => Import::NEEDS_REVIEW, 'confirmed_by' => null, 'confirmed_at' => null]);
+        return DB::transaction(function () use ($import, $user) {
+            $period = CarbonImmutable::parse($import->period);
+            $customerIds = SaleLine::where('import_id', $import->id)->distinct()->pluck('customer_id');
+            $units = -1 * (float) StockMovement::where('import_id', $import->id)->sum('units');
+
+            $lines = SaleLine::where('import_id', $import->id)->delete();
+            StockMovement::where('import_id', $import->id)->delete();
+
+            // An issued invoice for this month no longer matches the sales: reverse it with a credit note.
+            $cancelled = [];
+            $invoices = app(InvoiceService::class);
+            Invoice::where('kind', Invoice::INVOICE)->where('status', Invoice::ISSUED)
+                ->where('distributor_id', $import->distributor_id)->whereDate('period', $period->startOfMonth())
+                ->get()->each(function (Invoice $invoice) use ($invoices, $import, $user, &$cancelled) {
+                    $note = $invoices->cancel($invoice, "Import undone: {$import->original_name}", $user ?? auth()->user());
+                    $cancelled[] = "{$invoice->number} (credit note {$note->number})";
+                });
+
+            $removed = 0;
+            foreach (Customer::whereIn('id', $customerIds)->get() as $customer) {
+                $lastSale = SaleLine::where('customer_id', $customer->id)->max('period');
+                if ($lastSale === null && $customer->first_seen->isSameMonth($period) && ! Invoice::where('customer_id', $customer->id)->exists()) {
+                    $customer->medicalReps()->detach();
+                    $customer->delete();
+                    $removed++;
+                } else {
+                    $customer->update(['last_seen' => $lastSale ? CarbonImmutable::parse($lastSale) : $customer->first_seen]);
+                }
+            }
+
+            $import->update(['status' => Import::NEEDS_REVIEW, 'confirmed_by' => null, 'confirmed_at' => null]);
+
+            return ['lines' => $lines, 'units' => $units, 'invoices' => $cancelled, 'customers' => $removed];
+        });
     }
 
     /**

@@ -333,4 +333,35 @@ class PortalTest extends TestCase
         $this->get("/imports/{$import->id}")->assertForbidden();
         $this->get('/imports')->assertOk()->assertDontSee('Irfan Enterprises');
     }
+
+    public function test_reverting_an_import_restores_stock_cancels_its_invoice_and_can_remove_the_file(): void
+    {
+        $import = $this->import();
+        app(ConfirmImport::class)->handle($import, $this->owner());
+        $gyn = Product::where('code', 'GYN')->value('id');
+        $this->actingAs($this->owner());
+        $this->post('/invoices', ['to' => 'd:'.$import->distributor_id, 'period' => '2026-10'])->assertSessionHasNoErrors();
+
+        $this->post("/imports/{$import->id}/reverse", ['remove_file' => 1])->assertRedirect();
+
+        $this->assertModelMissing($import);
+        $this->assertSame(0, SaleLine::count());
+        $this->assertEqualsWithDelta(3294, (float) \App\Modules\Sales\Models\StockMovement::where('product_id', $gyn)->sum('units'), 0.01);
+        $this->assertSame('cancelled', \App\Modules\Billing\Models\Invoice::where('kind', 'invoice')->value('status'));
+        $this->assertDatabaseHas('invoices', ['kind' => 'credit_note']);
+        $this->assertSame(1, Customer::count()); // still on the cancelled invoice, so it stays in the register
+    }
+
+    public function test_reverting_keeps_the_file_in_review_and_removes_customers_it_added(): void
+    {
+        $import = $this->import();
+        app(ConfirmImport::class)->handle($import, $this->owner());
+
+        $this->actingAs($this->owner())->post("/imports/{$import->id}/reverse")->assertRedirect(route('imports.show', $import));
+
+        $this->assertSame(Import::NEEDS_REVIEW, $import->fresh()->status);
+        $this->assertSame(0, Customer::count());
+        $this->actingAs(User::factory()->role('accounts')->create())->post("/imports/{$import->id}/confirm")->assertRedirect();
+        $this->assertSame(2, SaleLine::count());
+    }
 }

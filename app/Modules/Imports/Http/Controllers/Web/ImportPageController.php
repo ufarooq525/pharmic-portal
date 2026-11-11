@@ -155,14 +155,35 @@ class ImportPageController
             ->with('status', "{$import->distributor->name} for {$import->period->format('F Y')} is confirmed. Stock, sales and reports are updated.");
     }
 
-    public function reverse(Import $import, ConfirmImport $confirm): RedirectResponse
+    /** Revert a confirmed import. "Remove the file too" also discards it, as if it was never uploaded. */
+    public function reverse(Request $request, Import $import, ConfirmImport $confirm): RedirectResponse
     {
-        abort_unless($import->isConfirmed(), 422, 'Only a confirmed import can be undone.');
+        $this->guard($request, $import);
+        abort_unless($import->isConfirmed(), 422, 'Only a confirmed import can be reverted.');
+        $alsoRemove = $request->boolean('remove_file');
 
-        DB::transaction(fn () => $confirm->reverse($import));
-        ActivityLog::record('Undid import', "{$import->distributor->name}, {$import->period->format('F Y')}");
+        try {
+            $done = $confirm->reverse($import, $request->user());
+        } catch (DomainException $e) {
+            return back()->withErrors(['confirm' => $e->getMessage()]);
+        }
 
-        return back()->with('status', 'Import undone. Its sales and stock movements were removed; it is back in review.');
+        ActivityLog::record('Reverted import', "{$import->distributor->name}, {$import->period->format('F Y')}: ".fmt_num($done['units']).' units back in stock'
+            .($done['invoices'] ? ', cancelled '.implode(', ', $done['invoices']) : '').($alsoRemove ? ', file removed' : ''));
+
+        $message = 'Import reverted: '.fmt_num($done['lines']).' sale lines removed and '.fmt_num($done['units']).' units are back in stock'
+            .($done['customers'] ? ", {$done['customers']} new ".str('customer')->plural($done['customers']).' taken out of the register' : '')
+            .($done['invoices'] ? '. Cancelled with a credit note: '.implode(', ', $done['invoices']) : '').'.';
+
+        if ($alsoRemove) {
+            Storage::delete($import->file_path);
+            $import->delete();
+
+            return redirect()->route('imports.index', ['period' => $import->period->format('Y-m'), 'distributor' => $import->distributor_id])
+                ->with('status', $message.' The file is removed; upload the right one below.');
+        }
+
+        return redirect()->route('imports.show', $import)->with('status', $message.' The file is back in review: fix it and confirm again, or discard it.');
     }
 
     /** The original PDF, for checking a figure against the source. */
