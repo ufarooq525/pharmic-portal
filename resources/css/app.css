@@ -1,0 +1,135 @@
+@import '@fontsource-variable/manrope';
+@import 'tailwindcss';
+
+@source '../views';
+@source '../../app/Modules';
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+/* Tone classes built from data ("bg-{{ $tone }}-soft") are not visible to the scanner, so list them here. */
+@source inline('{bg,text}-{ok,warn,bad,info,mute}{,-soft} chip-{ok,warn,bad,info,mute}');
+
+/*
+ * Skyline design tokens. Every colour is a variable, so light and dark mode switch by changing
+ * data-theme on <html>; no dark: variants are needed in the views.
+ */
+:root {
+    --app-bg: #f4f6fa;
+    --app-surface: #ffffff;
+    --app-sunk: #f1f4f9;
+    --app-line: #e1e6ef;
+    --app-ink: #131a2a;
+    --app-muted: #556079;
+    --app-accent: #2457d6;
+    --app-accent-strong: #1a3f9e;
+    --app-accent-soft: #eaf0fd;
+    --app-on-accent: #ffffff;
+    --app-ok: #17603a;
+    --app-ok-soft: #e5f4ea;
+    --app-warn: #8a3a07;
+    --app-warn-soft: #fff1e6;
+    --app-bad: #b42318;
+    --app-bad-soft: #fde8e6;
+    --app-info: #1f4fb8;
+    --app-info-soft: #e6eefc;
+    --app-mute: #4a5468;
+    --app-mute-soft: #eef0f3;
+    --app-chart-2: #e0802f;
+    --app-shadow: 0 1px 2px rgb(19 26 42 / 0.06);
+    color-scheme: light;
+}
+
+:root[data-theme='dark'] {
+    --app-bg: #0d121c;
+    --app-surface: #151c29;
+    --app-sunk: #1b2434;
+    --app-line: #27324a;
+    --app-ink: #e7ecf5;
+    --app-muted: #9aa6bd;
+    --app-accent: #7499f6;
+    --app-accent-strong: #a9c0fb;
+    --app-accent-soft: #1b2a4d;
+    --app-on-accent: #0b1222;
+    --app-ok: #6fd39a;
+    --app-ok-soft: #12301f;
+    --app-warn: #f2a665;
+    --app-warn-soft: #3a2412;
+    --app-bad: #f49088;
+    --app-bad-soft: #3b1715;
+    --app-info: #8fb1f7;
+    --app-info-soft: #172a4c;
+    --app-mute: #b3bdcf;
+    --app-mute-soft: #222b3b;
+    --app-chart-2: #f2a665;
+    --app-shadow: 0 1px 2px rgb(0 0 0 / 0.4);
+    color-scheme: dark;
+}
+
+@theme inline {
+    --font-sans: 'Manrope Variable', 'Segoe UI', system-ui, sans-serif;
+    --color-bg: var(--app-bg);
+    --color-surface: var(--app-surface);
+    --color-sunk: var(--app-sunk);
+    --color-line: var(--app-line);
+    --color-ink: var(--app-ink);
+    --color-muted: var(--app-muted);
+    --color-accent: var(--app-accent);
+    --color-accent-strong: var(--app-accent-strong);
+    --color-accent-soft: var(--app-accent-soft);
+    --color-on-accent: var(--app-on-accent);
+    --color-ok: var(--app-ok);
+    --color-ok-soft: var(--app-ok-soft);
+    --color-warn: var(--app-warn);
+    --color-warn-soft: var(--app-warn-soft);
+    --color-bad: var(--app-bad);
+    --color-bad-soft: var(--app-bad-soft);
+    --color-info: var(--app-info);
+    --color-info-soft: var(--app-info-soft);
+    --color-mute: var(--app-mute);
+    --color-mute-soft: var(--app-mute-soft);
+    --color-chart-2: var(--app-chart-2);
+}
+
+@layer base {
+    html { background: var(--app-bg); }
+    body { @apply bg-bg font-sans text-[14px] leading-[1.45] text-ink antialiased; }
+    h1, h2, h3 { text-wrap: balance; }
+    :focus-visible { outline: 2px solid var(--app-accent); outline-offset: 2px; }
+    [x-cloak] { display: none !important; }
+}
+
+@layer components {
+    .card { @apply rounded-[18px] bg-surface p-5; box-shadow: var(--app-shadow); }
+    .card-title { @apply text-[17px] font-extrabold tracking-[-0.01em]; }
+    .num { font-variant-numeric: tabular-nums; }
+
+    .btn { @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-line bg-surface px-4 py-2 font-bold text-ink transition-colors hover:border-muted disabled:cursor-not-allowed disabled:opacity-50; }
+    .btn-primary { @apply border-accent bg-accent text-on-accent hover:border-accent-strong hover:bg-accent-strong; }
+    .btn-sm { @apply min-h-9 rounded-lg px-3 py-1.5 text-[13px]; }
+
+    .field { @apply min-h-11 w-full rounded-xl border border-line bg-surface px-3 py-2 text-ink placeholder:text-muted; }
+    .label { @apply text-[12px] font-bold text-muted; }
+
+    .chip { @apply inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-0.5 text-[11.5px] font-bold; }
+    .chip-ok { @apply bg-ok-soft text-ok; }
+    .chip-warn { @apply bg-warn-soft text-warn; }
+    .chip-bad { @apply bg-bad-soft text-bad; }
+    .chip-info { @apply bg-info-soft text-info; }
+    .chip-mute { @apply bg-mute-soft text-mute; }
+
+    .table-wrap { @apply overflow-x-auto; }
+    .data { @apply w-full border-separate border-spacing-0 text-[13.5px]; }
+    .data th { @apply bg-sunk px-3 py-2.5 text-left text-[12px] font-bold whitespace-nowrap text-muted first:rounded-l-xl last:rounded-r-xl; }
+    .data td { @apply border-b border-line px-3 py-2.5 align-middle; }
+    .data tfoot td { @apply border-0 bg-accent-soft font-extrabold text-accent-strong first:rounded-l-xl last:rounded-r-xl; }
+    .data .r { @apply text-right whitespace-nowrap; font-variant-numeric: tabular-nums; }
+
+    .tabs { @apply inline-flex max-w-full flex-wrap gap-1 rounded-2xl bg-sunk p-1; }
+    .tab { @apply rounded-xl px-3.5 py-2 font-bold text-muted hover:text-ink; }
+    .tab[aria-current='page'] { @apply bg-surface text-ink; box-shadow: var(--app-shadow); }
+
+    .bar-track { @apply block h-3 overflow-hidden rounded-full bg-sunk; }
+    .bar-fill { @apply block h-full rounded-full bg-accent; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { transition: none !important; animation: none !important; }
+}
