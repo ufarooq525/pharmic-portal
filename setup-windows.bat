@@ -14,13 +14,13 @@ where php >nul 2>nul || for /d %%D in ("%LARAGON%\bin\php\php-8*") do set "PATH=
 where php >nul 2>nul || (echo PHP not found. Start Laragon first. & goto :fail)
 php -r "exit(version_compare(PHP_VERSION, '8.3.0', '>=') ? 0 : 1);" || (echo Laravel 13 needs PHP 8.3 or newer. Switch PHP in Laragon: Menu ^> PHP ^> Version. & goto :fail)
 
-set "COMPOSER=composer"
-where composer >nul 2>nul || set "COMPOSER=php %LARAGON%\bin\composer\composer.phar"
+set "COMPOSER_CMD=composer"
+where composer >nul 2>nul || set "COMPOSER_CMD=php %LARAGON%\bin\composer\composer.phar"
 
 if not exist .env copy .env.example .env >nul
 
 echo == Installing PHP packages
-call %COMPOSER% install --no-interaction --prefer-dist --no-progress || goto :fail
+call %COMPOSER_CMD% install --no-interaction --prefer-dist --no-progress || goto :fail
 
 findstr /r /c:"^APP_KEY=base64" .env >nul || php artisan key:generate --force || goto :fail
 
