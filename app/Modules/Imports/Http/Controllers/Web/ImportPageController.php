@@ -2,6 +2,7 @@
 
 namespace App\Modules\Imports\Http\Controllers\Web;
 
+use App\Modules\Access\Models\ActivityLog;
 use App\Modules\Catalog\Models\Product;
 use App\Modules\Distribution\Models\Distributor;
 use App\Modules\Distribution\Models\ProductAlias;
@@ -53,6 +54,7 @@ class ImportPageController
         }
 
         $failed = collect($import->checks)->reject(fn ($c) => $c['ok']);
+        ActivityLog::record('Uploaded file', "{$import->distributor->name}, {$import->period->format('F Y')}: {$import->original_name}".($failed->isEmpty() ? '' : ' (checks failed)'));
         [$flashKey, $status] = $failed->isEmpty()
             ? ['status', 'File read. Check the customers below, then confirm.']
             : ['warning', 'File read, but '.$failed->count().' '.str('check')->plural($failed->count()).' failed. It may be the wrong file.'];
@@ -85,6 +87,7 @@ class ImportPageController
         $distributorId = $import->distributor_id;
         Storage::delete($import->file_path);
         $import->delete();
+        ActivityLog::record('Discarded file', "{$import->distributor->name}, {$import->period->format('F Y')}: {$import->original_name}");
 
         return redirect()->route('imports.index', ['period' => $period, 'distributor' => $distributorId])
             ->with('status', 'The file was discarded. Nothing was posted. Upload the right file below.');
@@ -128,6 +131,7 @@ class ImportPageController
             );
             $import->rows()->where('product_name', $data['product_name'])->update(['product_id' => $data['product_id']]);
         });
+        ActivityLog::record('Linked product name', "{$import->distributor->name}: “{$data['product_name']}” → ".Product::find($data['product_id'])->name);
 
         return back()->with('status', "“{$data['product_name']}” is now linked. It will be recognised in every later file from this distributor.");
     }
@@ -136,6 +140,7 @@ class ImportPageController
     {
         try {
             $confirm->handle($import, $request->user());
+            ActivityLog::record('Confirmed import', "{$import->distributor->name}, {$import->period->format('F Y')}");
         } catch (DomainException $e) {
             return back()->withErrors(['confirm' => $e->getMessage()]);
         }
@@ -149,6 +154,7 @@ class ImportPageController
         abort_unless($import->isConfirmed(), 422, 'Only a confirmed import can be undone.');
 
         DB::transaction(fn () => $confirm->reverse($import));
+        ActivityLog::record('Undid import', "{$import->distributor->name}, {$import->period->format('F Y')}");
 
         return back()->with('status', 'Import undone. Its sales and stock movements were removed; it is back in review.');
     }

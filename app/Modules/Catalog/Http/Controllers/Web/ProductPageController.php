@@ -2,6 +2,7 @@
 
 namespace App\Modules\Catalog\Http\Controllers\Web;
 
+use App\Modules\Access\Models\ActivityLog;
 use App\Modules\Catalog\Models\Product;
 use App\Support\Period;
 use Illuminate\Http\RedirectResponse;
@@ -41,6 +42,7 @@ class ProductPageController
         ]);
 
         $product->rates()->updateOrCreate(['effective_from' => $data['effective_from']], $data);
+        ActivityLog::record('Changed rates', "{$product->name} from {$data['effective_from']}: ST {$data['sales_tax_rate']}%, WHT {$data['withholding_tax_rate']}%, TP {$data['trade_price']}, Ex-FP {$data['exfp_price']}, cost {$data['cost_price']}");
 
         return redirect()->route('products.index', ['period' => $request->query('period')])
             ->with('status', "{$product->name}: new rates apply from ".date('j M Y', strtotime($data['effective_from'])).'.');

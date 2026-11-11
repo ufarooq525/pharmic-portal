@@ -4,19 +4,60 @@
     $owed = fn (float $v) => $v > 0 ? 'warn' : ($v < 0 ? 'info' : 'ok');
     $closingLabel = $s && $s['closing'] < 0 ? 'Paid in advance' : 'Balance due';
     $closingNote = $year == now()->format('Y') ? 'Today' : '31 Dec '.$year;
+    $m = collect($month);
+    $statuses = ['confirmed' => ['Posted', 'ok'], 'needs_review' => ['Needs review', 'warn'], 'blocked' => ['Wrong file', 'bad']];
+    $monthName = $period->format('F');
 @endphp
-<x-layouts.app title="Ledger" description="Distributor ledgers: confirmed monthly sales against payments received, with running balance.">
-    <x-page-header title="Ledger" sub="Each distributor’s account: confirmed monthly sales at Ex-FP are debited, payments received are credited. Undoing an import takes its sales out again.">
+<x-layouts.app title="Distributor ledger" description="Opening balance, invoices including both taxes, payments received and what each distributor still owes.">
+    <x-page-header title="Distributor ledger" sub="Opening balance, {{ $period->format('F') }} invoices including both taxes, payments received and what is still due. Undoing an import takes its invoice back out." />
+
+    <div class="grid grid-cols-[repeat(auto-fit,minmax(190px,1fr))] gap-3.5">
+        <x-kpi label="Total due" :value="fmt_rs($m->sum('due'))" :note="'opening + '.$monthName" />
+        <x-kpi label="Received" :value="fmt_rs($m->sum('received'))" :note="'in '.$monthName" />
+        <x-kpi label="Outstanding" :value="fmt_rs($m->sum('balance'))" note="all distributors" />
+    </div>
+
+    <section class="card" aria-labelledby="bal-h">
+        <h2 id="bal-h" class="card-title">Balances for {{ $period->format('F Y') }}</h2>
+        <div class="table-wrap">
+            <table class="data">
+                <thead>
+                <tr><th scope="col">Distributor</th><th scope="col" class="r">Opening</th><th scope="col" class="r">Invoiced {{ $period->format('M') }}</th><th scope="col" class="r">Total due</th><th scope="col" class="r">Received</th><th scope="col" class="r">Balance</th><th scope="col">{{ $monthName }}</th></tr>
+                </thead>
+                <tbody>
+                @foreach ($m as $row)
+                    @php([$label, $tone] = $row['status'] ? $statuses[$row['status']] : ['File not received', 'mute'])
+                    <tr>
+                        <td><a href="{{ route('ledger.index', ['distributor' => $row['distributor']->id, 'period' => $period->format('Y-m')]) }}#statement" class="font-semibold">{{ $row['distributor']->name }}, {{ $row['distributor']->city }}</a></td>
+                        <td class="r">{{ fmt_num($row['opening']) }}</td>
+                        <td class="r">{{ fmt_num($row['invoiced']) }}</td>
+                        <td class="r">{{ fmt_num($row['due']) }}</td>
+                        <td class="r">{{ fmt_num($row['received']) }}</td>
+                        <td class="r font-bold">{{ fmt_num($row['balance']) }}</td>
+                        <td><x-chip :tone="$tone">{{ $label }}</x-chip></td>
+                    </tr>
+                @endforeach
+                </tbody>
+                <tfoot>
+                <tr><td>Total</td><td class="r">{{ fmt_num($m->sum('opening')) }}</td><td class="r">{{ fmt_num($m->sum('invoiced')) }}</td><td class="r">{{ fmt_num($m->sum('due')) }}</td><td class="r">{{ fmt_num($m->sum('received')) }}</td><td class="r">{{ fmt_num($m->sum('balance')) }}</td><td></td></tr>
+                </tfoot>
+            </table>
+        </div>
+        <p class="m-0 text-[12px] text-muted">An invoice is the month’s confirmed sales at trade price plus sales tax and withholding tax. Opening balances come from each distributor’s profile; change the month at the top to see another month.</p>
+    </section>
+
+    <div class="flex flex-wrap items-end justify-between gap-3" id="statement">
+        <h2 class="m-0 text-[22px] font-extrabold tracking-[-0.015em]">Statement</h2>
         @if ($current)
-            <a href="{{ route('ledger.export', [$current, 'year' => $year]) }}" class="btn">Export {{ $year }} (CSV)</a>
+            <a href="{{ route('ledger.export', [$current, 'year' => $year]) }}" class="btn btn-sm">Export {{ $current->name }} {{ $year }} (CSV)</a>
         @endif
-    </x-page-header>
+    </div>
 
     <div class="flex flex-wrap items-start gap-5">
         <nav aria-label="Distributors" class="flex w-full max-w-[320px] flex-[1_1_250px] flex-col gap-1 rounded-[20px] bg-surface p-2.5 shadow-[var(--sky-shadow)]">
             @foreach ($distributors as $d)
                 @php($due = $balances[$d->id] ?? 0)
-                <a href="{{ route('ledger.index', ['distributor' => $d->id, 'year' => $year]) }}" @if ($current?->id === $d->id) aria-current="page" @endif
+                <a href="{{ route('ledger.index', ['distributor' => $d->id, 'year' => $year, 'period' => $period->format('Y-m')]) }}" @if ($current?->id === $d->id) aria-current="page" @endif
                    class="flex min-h-14 items-center justify-between gap-2.5 rounded-[14px] border-2 px-3 py-2.5 text-ink no-underline {{ $current?->id === $d->id ? 'border-accent bg-soft' : 'border-transparent hover:bg-sunk' }}">
                     <span class="flex min-w-0 flex-col"><b class="font-bold">{{ $d->name }}</b><span class="text-[12px] text-muted">{{ $d->city }}</span></span>
                     @php($dueTone = $owed($due))
@@ -32,14 +73,14 @@
                     <h2 class="m-0 text-[22px] font-extrabold tracking-[-0.015em]">{{ $current->name }} · {{ $year }}</h2>
                     <nav class="tabs" aria-label="Year">
                         @foreach (range((int) now()->format('Y') - 2, (int) now()->format('Y')) as $y)
-                            <a href="{{ route('ledger.index', ['distributor' => $current->id, 'year' => $y]) }}" class="tab" @if ($y === $year) aria-current="page" @endif>{{ $y }}</a>
+                            <a href="{{ route('ledger.index', ['distributor' => $current->id, 'year' => $y, 'period' => $period->format('Y-m')]) }}" class="tab" @if ($y === $year) aria-current="page" @endif>{{ $y }}</a>
                         @endforeach
                     </nav>
                 </div>
 
                 <div class="grid grid-cols-[repeat(auto-fit,minmax(150px,1fr))] gap-2.5">
                     <x-kpi label="Opening balance" :value="fmt_rs($s['opening'])" :note="'1 Jan '.$year" />
-                    <x-kpi label="Sales (debit)" :value="fmt_rs($s['debit'])" note="Confirmed, at Ex-FP" />
+                    <x-kpi label="Invoiced (debit)" :value="fmt_rs($s['debit'])" note="incl. sales tax and WHT" />
                     <x-kpi label="Payments (credit)" :value="fmt_rs($s['credit'])" />
                     <x-kpi :label="$closingLabel" :value="fmt_rs(abs($s['closing']))" :note="$closingNote" />
                 </div>
@@ -138,7 +179,6 @@
                     </section>
                 @endif
 
-                <p class="m-0 text-[13px] text-muted">Sales are posted at Ex-FP value, before sales tax.</p>
             </div>
         @endif
     </div>

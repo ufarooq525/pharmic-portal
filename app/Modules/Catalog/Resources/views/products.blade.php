@@ -1,11 +1,12 @@
 @php
     $asOf = $period->endOfMonth();
 @endphp
-<x-layouts.app title="Products & taxes" description="Products with their prices, sales tax and withholding tax rates.">
-    <x-page-header title="Products and taxes" sub="Each product carries its own prices, sales tax rate and withholding tax rate. A change is saved with the date it starts, so earlier months keep their own rates." />
+<x-layouts.app title="Master data · Products & taxes" description="Products with their prices, sales tax and withholding tax rates.">
+    <x-masters-tabs current="products" />
 
     <section class="card flex flex-col gap-4" aria-labelledby="p-h">
-        <h2 id="p-h" class="card-title">Rates in force for {{ $period->format('F Y') }}</h2>
+        <h2 id="p-h" class="card-title">Products, prices and taxes for {{ $period->format('F Y') }}</h2>
+        <p class="m-0 text-[13px] text-muted">Each product carries its own prices, sales tax rate and withholding tax rate. A change is saved with the date it starts, so earlier months keep their own rates.</p>
         <div class="table-wrap">
             <table class="data">
                 <thead>

@@ -24,10 +24,14 @@ call %COMPOSER_CMD% install --no-interaction --prefer-dist --no-progress || goto
 
 findstr /r /c:"^APP_KEY=base64" .env >nul || php artisan key:generate --force || goto :fail
 
-echo == Creating the pharmic_portal database and tables, loading products, distributors and reps
+echo == Database: creating or updating tables (first run also loads products, distributors and reps)
 rem --force also creates the MySQL database when it does not exist yet
 php artisan migrate --force || goto :fail
-php artisan db:seed --force || goto :fail
+rem Seed only once: running this again later must not reset passwords or rates.
+if not exist storage\app\.seeded (
+    php artisan db:seed --force || goto :fail
+    echo seeded> storage\app\.seeded
+)
 if not exist public\storage php artisan storage:link
 
 echo.

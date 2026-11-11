@@ -4,8 +4,8 @@
     $bonusSources = Distributor::BONUS_SOURCES;
     $statuses = ['confirmed' => ['Confirmed', 'ok'], 'needs_review' => ['Needs review', 'warn'], 'blocked' => ['Wrong file', 'bad']];
 @endphp
-<x-layouts.app title="Distributors" description="Each distributor's file format: report layout, header name, bonus source and product spellings.">
-    <x-page-header title="Distributors" sub="Every distributor’s software prints a different report. Each file is checked against the profile saved here before anything is posted." />
+<x-layouts.app title="Master data · Distributors" description="Each distributor's file format: report layout, header name, bonus source and product spellings.">
+    <x-masters-tabs current="distributors" />
 
     <div class="flex flex-wrap items-start gap-5">
         <nav aria-label="Distributors" class="flex w-full max-w-[320px] flex-[1_1_250px] flex-col gap-1 rounded-[20px] bg-surface p-2.5 shadow-[var(--sky-shadow)]">

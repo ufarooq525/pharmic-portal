@@ -2,7 +2,9 @@
 
 namespace App\Modules\Sales\Models;
 
+use App\Modules\Catalog\Models\Product;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class StockMovement extends Model
 {
@@ -20,6 +22,11 @@ class StockMovement extends Model
 
     protected function casts(): array
     {
-        return ['moved_on' => 'date', 'units' => 'float'];
+        return ['moved_on' => 'date', 'units' => 'float', 'unit_cost' => 'float'];
+    }
+
+    public function product(): BelongsTo
+    {
+        return $this->belongsTo(Product::class);
     }
 }

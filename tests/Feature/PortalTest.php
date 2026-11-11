@@ -108,7 +108,10 @@ class PortalTest extends TestCase
         $this->get('/inventory?period=2026-10')->assertOk()->assertSee('Gynofol Tab');
         $this->get('/products?period=2026-10')->assertOk()->assertSee('withholding tax rate');
         $this->get('/users')->assertOk()->assertSee('What each role can do');
-        $this->get('/ledger?year=2026&distributor='.Distributor::where('name', 'Irfan Enterprises')->value('id'))->assertOk()->assertSee('Sales for October 2026');
+        $this->get('/activity')->assertOk()->assertSee('Who did what and when');
+        $this->get('/master-data/reps')->assertOk()->assertSee('Uzma Bibi');
+        $this->get('/master-data/name-matching')->assertOk()->assertSee('GYNOF OL TAB (N)');
+        $this->get('/ledger?year=2026&distributor='.Distributor::where('name', 'Irfan Enterprises')->value('id'))->assertOk()->assertSee('Invoice for October 2026')->assertSee('Balances for October 2026');
         $this->get('/distributors?distributor='.Distributor::where('name', 'Irfan Enterprises')->value('id'))->assertOk()
             ->assertSee('IRFAN ENTERPRISES')->assertSee('GYNOFOL TAB')->assertSee('955');
 
@@ -215,7 +218,7 @@ class PortalTest extends TestCase
         $import = $this->import();
         app(ConfirmImport::class)->handle($import, $this->owner());
         $irfan = Distributor::where('name', 'Irfan Enterprises')->firstOrFail();
-        $sales = (float) SaleLine::sum('value_exfp');
+        $sales = (float) SaleLine::sum('value_tp') + (float) SaleLine::sum('sales_tax') + (float) SaleLine::sum('withholding_tax');
 
         $this->actingAs(User::factory()->role('accounts')->create())
             ->post("/ledger/{$irfan->id}/payments", ['paid_on' => '2026-11-05', 'amount' => 1000, 'method' => 'bank', 'reference' => 'TRX-1'])
@@ -251,5 +254,35 @@ class PortalTest extends TestCase
         app(ConfirmImport::class)->handle($import, $this->owner());
 
         $this->actingAs($this->owner())->delete("/imports/{$import->id}")->assertStatus(422);
+    }
+
+    public function test_a_stock_receipt_adds_stock_and_can_be_reverted(): void
+    {
+        $gyn = Product::where('code', 'GYN')->firstOrFail();
+        $accounts = User::factory()->role('accounts')->create();
+        $this->actingAs($accounts);
+
+        $this->post('/inventory/receipts', ['received_on' => '2026-10-15', 'reference' => 'GRN-1', 'lines' => [['product_id' => $gyn->id, 'units' => 500, 'unit_cost' => 74]]])
+            ->assertSessionHasNoErrors();
+        $receipt = \App\Modules\Sales\Models\StockReceipt::firstOrFail();
+        $this->assertEqualsWithDelta(3294 + 500, (float) \App\Modules\Sales\Models\StockMovement::where('product_id', $gyn->id)->sum('units'), 0.01);
+
+        $this->post("/inventory/receipts/{$receipt->id}/revert")->assertSessionHasNoErrors();
+        $this->assertSame('reverted', $receipt->fresh()->status);
+        $this->assertEqualsWithDelta(3294, (float) \App\Modules\Sales\Models\StockMovement::where('product_id', $gyn->id)->sum('units'), 0.01);
+        $this->assertDatabaseHas('activity_logs', ['action' => 'Reverted stock receipt']);
+
+        $this->actingAs(User::factory()->role('viewer')->create())->post('/inventory/receipts', [])->assertForbidden();
+    }
+
+    public function test_a_stock_csv_with_an_unknown_product_is_rejected_whole(): void
+    {
+        $csv = \Illuminate\Http\UploadedFile::fake()->createWithContent('stock.csv', "product,units,unit_cost\nGYN,100,74\nNOPE,5,1\n");
+
+        $this->actingAs(User::factory()->role('accounts')->create())
+            ->post('/inventory/receipts', ['received_on' => '2026-10-15', 'file' => $csv])
+            ->assertSessionHasErrors('receipt');
+
+        $this->assertSame(0, \App\Modules\Sales\Models\StockReceipt::count());
     }
 }

@@ -31,25 +31,28 @@ class AppServiceProvider extends ServiceProvider
             $confirmed = Import::whereDate('period', $period)->where('status', Import::CONFIRMED)->distinct()->count('distributor_id');
             $pending = max(0, Distributor::count() - $confirmed);
 
+            // Same order as the approved Skyline board: month end, stock and money, setup.
             $items = [
-                ['dashboard', 'Dashboard', 'dashboard', null],
-                ['imports.index', 'Imports', 'imports.*', $pending ?: null],
-                ['distributors.index', 'Distributors', 'distributors.*', null],
-                ['customers.index', 'Customers', 'customers.*', null],
-                ['inventory.index', 'Inventory', 'inventory.*', null],
-                ['ledger.index', 'Ledger', 'ledger.*', null],
-                ['reports.show', 'Reports', 'reports.*', null],
-                ['products.index', 'Products & taxes', 'products.*', null],
+                ['dashboard', 'Dashboard', ['dashboard'], null],
+                ['imports.index', 'Imports', ['imports.*'], $pending ?: null],
+                ['customers.index', 'Customers', ['customers.*'], null],
+                ['inventory.index', 'Inventory', ['inventory.*'], null],
+                ['reports.show', 'Reports', ['reports.*'], null],
+                ['ledger.index', 'Distributor ledger', ['ledger.*'], null],
+                ['products.index', 'Master data', ['products.*', 'distributors.*', 'reps.*', 'aliases.*'], null],
             ];
 
             if ($role === Role::Owner) {
-                $items[] = ['users.index', 'Users & roles', 'users.*', null];
+                $items[] = ['users.index', 'Users & roles', ['users.*'], null];
+            }
+            if (in_array($role, [Role::Owner, Role::Accounts], true)) {
+                $items[] = ['activity.index', 'Activity log', ['activity.*'], null];
             }
 
             $view->with('period', $period)->with('navItems', array_map(fn ($i) => [
                 'url' => route($i[0], $query),
                 'label' => $i[1],
-                'active' => $request->routeIs($i[2]),
+                'active' => $request->routeIs(...$i[2]),
                 'badge' => $i[3],
             ], $items));
         });

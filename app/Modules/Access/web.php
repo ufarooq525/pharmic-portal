@@ -1,5 +1,6 @@
 <?php
 
+use App\Modules\Access\Http\Controllers\Web\ActivityController;
 use App\Modules\Access\Http\Controllers\Web\LoginController;
 use App\Modules\Access\Http\Controllers\Web\UserController;
 use Illuminate\Support\Facades\Route;
@@ -16,3 +17,5 @@ Route::middleware(['auth', 'role:owner'])->prefix('users')->name('users.')->grou
     Route::post('/', [UserController::class, 'store'])->name('store');
     Route::put('{user}', [UserController::class, 'update'])->name('update');
 });
+
+Route::get('activity', ActivityController::class)->middleware(['auth', 'role:accounts'])->name('activity.index');

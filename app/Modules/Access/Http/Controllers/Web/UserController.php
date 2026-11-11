@@ -2,6 +2,7 @@
 
 namespace App\Modules\Access\Http\Controllers\Web;
 
+use App\Modules\Access\Models\ActivityLog;
 use App\Models\User;
 use App\Modules\Access\Enums\Role;
 use Illuminate\Http\RedirectResponse;
@@ -31,6 +32,7 @@ class UserController
         ]);
 
         User::create($data + ['is_active' => true]);
+        ActivityLog::record('Added user', "{$data['name']} ({$data['email']}) as ".Role::from($data['role'])->label());
 
         return back()->with('status', "{$data['name']} can now sign in.");
     }
@@ -48,6 +50,7 @@ class UserController
         }
 
         $user->update($data);
+        ActivityLog::record('Changed user', "{$user->name}: ".Role::from($data['role'])->label().($data['is_active'] ? ', active' : ', deactivated'));
 
         return back()->with('status', "{$user->name} updated.");
     }

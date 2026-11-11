@@ -2,6 +2,7 @@
 
 namespace App\Modules\Distribution\Http\Controllers\Web;
 
+use App\Modules\Access\Models\ActivityLog;
 use App\Modules\Distribution\Models\Distributor;
 use App\Modules\Distribution\Models\ProductAlias;
 use App\Modules\Imports\Models\Import;
@@ -47,6 +48,7 @@ class DistributorPageController
         ]);
 
         $distributor->update($data);
+        ActivityLog::record('Changed distributor profile', "{$distributor->name}: format {$distributor->layout}, bonus {$distributor->bonus_source}");
 
         return back()->with('status', "{$distributor->name}’s file profile is saved. New uploads are checked against it.");
     }
@@ -55,6 +57,7 @@ class DistributorPageController
     {
         abort_unless($alias->distributor_id === $distributor->id, 404);
         $alias->delete();
+        ActivityLog::record('Unlinked product name', "{$distributor->name}: “{$alias->name_in_file}”");
 
         return back()->with('status', "“{$alias->name_in_file}” is no longer linked. The next file that uses it will ask you to link it again.");
     }

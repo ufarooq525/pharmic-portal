@@ -2,6 +2,7 @@
 
 namespace App\Modules\Ledger\Http\Controllers\Web;
 
+use App\Modules\Access\Models\ActivityLog;
 use App\Modules\Distribution\Models\Distributor;
 use App\Modules\Ledger\Models\Payment;
 use App\Modules\Ledger\Services\LedgerBuilder;
@@ -21,7 +22,11 @@ class LedgerPageController
         $current = $distributors->firstWhere('id', $request->integer('distributor')) ?? $distributors->first();
         $year = $this->year($request);
 
+        $period = Period::fromRequest($request);
+
         return view('ledger::index', [
+            'period' => $period,
+            'month' => $ledger->month($period),
             'distributors' => $distributors,
             'balances' => $ledger->balances(),
             'current' => $current,
@@ -43,6 +48,7 @@ class LedgerPageController
         ]);
 
         $distributor->payments()->create($data + ['recorded_by' => $request->user()->id]);
+        ActivityLog::record('Recorded payment', "{$distributor->name}: ".fmt_rs((float) $data['amount'])." on {$data['paid_on']} by {$data['method']}".(empty($data['reference']) ? '' : ", ref {$data['reference']}"));
 
         return back()->with('status', 'Payment of '.fmt_rs((float) $data['amount'])." from {$distributor->name} is recorded.");
     }
@@ -50,6 +56,7 @@ class LedgerPageController
     public function destroy(Payment $payment): RedirectResponse
     {
         $payment->delete();
+        ActivityLog::record('Removed payment', $payment->distributor->name.': '.fmt_rs($payment->amount).' of '.$payment->paid_on->format('j M Y'));
 
         return back()->with('status', 'Payment of '.fmt_rs($payment->amount).' removed from the ledger.');
     }

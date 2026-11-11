@@ -3,6 +3,7 @@
 namespace App\Modules\Sales\Http\Controllers\Web;
 
 use App\Modules\Catalog\Models\Product;
+use App\Modules\Sales\Models\StockReceipt;
 use App\Support\Period;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -33,8 +34,14 @@ class InventoryController
             [$start, $end, $start, $end, $start, $end, $start, $end, $start, $end, $end, $from3, $end, $from3, $end])
             ->groupBy('product_id')->get()->keyBy('product_id');
 
-        $rows = Product::orderBy('name')->with('rates')->get()->map(function (Product $p) use ($moves, $period) {
+        // Sold and bonus split, and the taxes on this month's confirmed sales, per product.
+        $sales = DB::table('sale_lines')->whereBetween('period', [$start, $end])->groupBy('product_id')
+            ->selectRaw('product_id, SUM(CASE WHEN units > 0 THEN units ELSE 0 END) AS sold, SUM(bonus_units) AS bonus, SUM(sales_tax) AS sales_tax, SUM(withholding_tax) AS withholding_tax')
+            ->get()->keyBy('product_id');
+
+        $rows = Product::orderBy('name')->with('rates')->get()->map(function (Product $p) use ($moves, $sales, $period) {
             $m = $moves->get($p->id);
+            $s = $sales->get($p->id);
             $rate = $p->rateOn($period->endOfMonth());
             $closing = (float) ($m->closing ?? 0);
             $monthly = $m && $m->sale_months > 0 ? (float) $m->out_3m / max(1, min(3, (int) $m->sale_months)) : 0;
@@ -44,7 +51,13 @@ class InventoryController
                 'name' => $p->name,
                 'opening' => (float) ($m->opening ?? 0),
                 'purchases' => (float) ($m->purchases ?? 0),
-                'sold' => (float) ($m->sold ?? 0),
+                'id' => $p->id,
+                'code' => $p->code,
+                'out' => (float) ($m->sold ?? 0),
+                'sold' => (float) ($s->sold ?? 0),
+                'bonus' => (float) ($s->bonus ?? 0),
+                'sales_tax' => (float) ($s->sales_tax ?? 0),
+                'withholding_tax' => (float) ($s->withholding_tax ?? 0),
                 'returned' => (float) ($m->returned ?? 0),
                 'adjusted' => (float) ($m->adjusted ?? 0),
                 'closing' => $closing,
@@ -57,6 +70,13 @@ class InventoryController
             ];
         });
 
-        return view('sales::inventory', ['period' => $period, 'rows' => $rows]);
+        return view('sales::inventory', [
+            'period' => $period,
+            'rows' => $rows,
+            'products' => Product::where('is_active', true)->orderBy('name')->get(['id', 'name', 'code']),
+            'receipts' => StockReceipt::with(['createdBy:id,name', 'revertedBy:id,name'])->latest('received_on')->latest('id')->limit(15)->get(),
+            'canReceive' => $request->user()->hasRole('accounts'),
+            'canEditRates' => $request->user()->hasRole('owner'),
+        ]);
     }
 }

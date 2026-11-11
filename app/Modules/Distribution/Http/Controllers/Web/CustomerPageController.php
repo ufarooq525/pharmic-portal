@@ -2,6 +2,7 @@
 
 namespace App\Modules\Distribution\Http\Controllers\Web;
 
+use App\Modules\Access\Models\ActivityLog;
 use App\Modules\Distribution\Models\Customer;
 use App\Modules\Distribution\Models\Distributor;
 use App\Modules\Distribution\Models\MedicalRep;
@@ -75,6 +76,7 @@ class CustomerPageController
         $share = count($reps) === 2 ? 50 : 100;
 
         $customer->medicalReps()->sync(collect($reps)->mapWithKeys(fn ($id) => [$id => ['share_percent' => $share]]));
+        ActivityLog::record('Assigned rep', $customer->name.': '.(MedicalRep::whereIn('id', $reps)->pluck('name')->join(' + ') ?: 'no rep').($share === 50 ? ' (50/50)' : ''));
 
         return back()->with('status', $reps ? "{$customer->name} is now linked to its rep." : "{$customer->name} no longer has a rep.");
     }
