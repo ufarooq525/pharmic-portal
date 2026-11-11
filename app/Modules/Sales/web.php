@@ -6,8 +6,10 @@ use App\Modules\Sales\Http\Controllers\Web\ReportController;
 use App\Modules\Sales\Http\Controllers\Web\StockReceiptController;
 use Illuminate\Support\Facades\Route;
 
+// Every signed-in role lands here; a medical rep is sent on to "My territory".
+Route::get('dashboard', DashboardPageController::class)->middleware('auth')->name('dashboard');
+
 Route::middleware(['auth', 'role:accounts,data_entry,viewer'])->group(function () {
-    Route::get('dashboard', DashboardPageController::class)->name('dashboard');
     Route::get('inventory', [InventoryController::class, 'index'])->name('inventory.index');
     Route::get('reports/{type?}', [ReportController::class, 'show'])->whereIn('type', ReportController::TYPES)->name('reports.show');
     Route::get('reports/{type}/export', [ReportController::class, 'export'])->whereIn('type', ReportController::TYPES)->name('reports.export');

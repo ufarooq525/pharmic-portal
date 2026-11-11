@@ -38,9 +38,15 @@ class AppServiceProvider extends ServiceProvider
                 ['customers.index', 'Customers', ['customers.*'], null],
                 ['inventory.index', 'Inventory', ['inventory.*'], null],
                 ['reports.show', 'Reports', ['reports.*'], null],
-                ['ledger.index', 'Distributor ledger', ['ledger.*'], null],
+                ...(in_array($role, [Role::Owner, Role::Accounts], true) ? [['invoices.index', 'Invoices', ['invoices.*'], null]] : []),
+                ...(in_array($role, [Role::Owner, Role::Accounts, Role::Viewer], true) ? [['ledger.index', 'Distributor ledger', ['ledger.*'], null]] : []),
+                ...(in_array($role, [Role::Owner, Role::Accounts], true) ? [['payroll.index', 'MR payroll', ['payroll.*'], null]] : []),
                 ['products.index', 'Master data', ['products.*', 'distributors.*', 'reps.*', 'aliases.*'], null],
             ];
+
+            if ($role === Role::MedicalRep) {
+                $items = [['my.index', 'My territory', ['my.*'], null]];
+            }
 
             if ($role === Role::Owner) {
                 $items[] = ['users.index', 'Users & roles', ['users.*'], null];

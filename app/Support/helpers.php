@@ -35,3 +35,16 @@ if (! function_exists('period_url')) {
         return request()->fullUrlWithQuery(['period' => $period, 'page' => null]);
     }
 }
+
+if (! function_exists('whatsapp_url')) {
+    /** wa.me link with the text filled in. A Pakistani 03xx number becomes 923xx; no number lets the user pick a chat. */
+    function whatsapp_url(?string $phone, string $text): string
+    {
+        $digits = preg_replace('/\D+/', '', (string) $phone);
+        if (str_starts_with($digits, '0')) {
+            $digits = '92'.substr($digits, 1);
+        }
+
+        return 'https://wa.me/'.(strlen($digits) >= 10 ? $digits : '').'?text='.rawurlencode($text);
+    }
+}

@@ -32,7 +32,7 @@ class ImportPageController
 
         return view('imports::index', [
             'period' => $period,
-            'distributors' => Distributor::orderBy('name')->get(),
+            'distributors' => Distributor::orderBy('name')->when($request->user()->visibleDistributorIds(), fn ($q, $ids) => $q->whereIn('id', $ids))->get(),
             'imports' => $imports,
             'selected' => $request->integer('distributor') ?: null,
         ]);
@@ -40,6 +40,8 @@ class ImportPageController
 
     public function store(StoreImportRequest $request, ReadImport $read): RedirectResponse|JsonResponse
     {
+        abort_unless($request->user()->canSeeDistributor($request->integer('distributor_id')), 403);
+
         try {
             $import = $read->handle(
                 Distributor::findOrFail($request->integer('distributor_id')),
@@ -79,8 +81,9 @@ class ImportPageController
     }
 
     /** Throw away a file that was never confirmed: wrong distributor, wrong month or a bad export. */
-    public function discard(Import $import): RedirectResponse
+    public function discard(Request $request, Import $import): RedirectResponse
     {
+        $this->guard($request, $import);
         abort_if($import->isConfirmed(), 422, 'A confirmed import has to be undone by the owner first.');
 
         $period = $import->period->format('Y-m');
@@ -95,6 +98,7 @@ class ImportPageController
 
     public function show(Request $request, Import $import, ImportPreview $preview): View
     {
+        $this->guard($request, $import);
         $import->load('distributor');
         $data = $preview->build($import);
         $attentionOnly = $request->query('show') === 'attention';
@@ -115,6 +119,7 @@ class ImportPageController
     /** Link how this distributor spells a product to the product, once. Later files use it automatically. */
     public function map(Request $request, Import $import): RedirectResponse
     {
+        $this->guard($request, $import);
         $data = $request->validate([
             'product_name' => ['required', 'string', 'max:255'],
             'product_id' => ['required', 'exists:products,id'],
@@ -138,6 +143,7 @@ class ImportPageController
 
     public function confirm(Request $request, Import $import, ConfirmImport $confirm): RedirectResponse
     {
+        $this->guard($request, $import);
         try {
             $confirm->handle($import, $request->user());
             ActivityLog::record('Confirmed import', "{$import->distributor->name}, {$import->period->format('F Y')}");
@@ -160,8 +166,15 @@ class ImportPageController
     }
 
     /** The original PDF, for checking a figure against the source. */
-    public function file(Import $import): StreamedResponse
+    public function file(Request $request, Import $import): StreamedResponse
     {
+        $this->guard($request, $import);
         return Storage::download($import->file_path, $import->original_name);
+    }
+
+    /** A user limited to some distributors cannot open another distributor's file. */
+    private function guard(Request $request, Import $import): void
+    {
+        abort_unless($request->user()->canSeeDistributor($import->distributor_id), 403);
     }
 }

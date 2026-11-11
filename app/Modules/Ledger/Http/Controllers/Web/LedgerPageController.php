@@ -18,7 +18,8 @@ class LedgerPageController
 {
     public function index(Request $request, LedgerBuilder $ledger): View
     {
-        $distributors = Distributor::orderBy('name')->get();
+        $allowed = $request->user()->visibleDistributorIds();
+        $distributors = Distributor::orderBy('name')->when($allowed, fn ($q, $ids) => $q->whereIn('id', $ids))->get();
         $current = $distributors->firstWhere('id', $request->integer('distributor')) ?? $distributors->first();
         $year = $this->year($request);
 
@@ -26,7 +27,7 @@ class LedgerPageController
 
         return view('ledger::index', [
             'period' => $period,
-            'month' => $ledger->month($period),
+            'month' => array_values(array_filter($ledger->month($period), fn ($r) => $allowed === null || in_array($r['distributor']->id, $allowed, true))),
             'distributors' => $distributors,
             'balances' => $ledger->balances(),
             'current' => $current,
@@ -63,6 +64,7 @@ class LedgerPageController
 
     public function export(Request $request, Distributor $distributor, LedgerBuilder $ledger): StreamedResponse
     {
+        abort_unless($request->user()->canSeeDistributor($distributor->id), 403);
         $year = $this->year($request);
         $s = $ledger->statement($distributor, $year);
 

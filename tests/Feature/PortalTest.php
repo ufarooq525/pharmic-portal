@@ -107,7 +107,10 @@ class PortalTest extends TestCase
         $this->get('/customers?period=2026-10')->assertOk()->assertSee('ZAMAN MEDICAL STORE');
         $this->get('/inventory?period=2026-10')->assertOk()->assertSee('Gynofol Tab');
         $this->get('/products?period=2026-10')->assertOk()->assertSee('withholding tax rate');
-        $this->get('/users')->assertOk()->assertSee('What each role can do');
+        $this->get('/users')->assertOk()->assertSee('Data scope');
+        $this->get('/users?tab=permissions')->assertOk()->assertSee('Own territory');
+        $this->get('/invoices?period=2026-10&to=d:'.Distributor::where('name', 'Irfan Enterprises')->value('id'))->assertOk()->assertSee('Gynofol Tab')->assertSee('Issue invoice');
+        $this->get('/payroll?period=2026-10')->assertOk()->assertSee('Uzma Bibi');
         $this->get('/activity')->assertOk()->assertSee('Who did what and when');
         $this->get('/master-data/reps')->assertOk()->assertSee('Uzma Bibi');
         $this->get('/master-data/name-matching')->assertOk()->assertSee('GYNOF OL TAB (N)');
@@ -284,5 +287,50 @@ class PortalTest extends TestCase
             ->assertSessionHasErrors('receipt');
 
         $this->assertSame(0, \App\Modules\Sales\Models\StockReceipt::count());
+    }
+
+    public function test_an_invoice_is_issued_locked_and_cancelled_with_a_credit_note(): void
+    {
+        app(ConfirmImport::class)->handle($this->import(), $this->owner());
+        $to = 'd:'.Distributor::where('name', 'Irfan Enterprises')->value('id');
+        $this->actingAs($this->owner());
+
+        $this->post('/invoices', ['to' => $to, 'period' => '2026-10'])->assertSessionHasNoErrors();
+        $invoice = \App\Modules\Billing\Models\Invoice::firstOrFail();
+        $this->assertSame('INV-2610-0001', $invoice->number);
+        $this->assertEqualsWithDelta(3336 + 16.68, $invoice->total, 0.01);
+        $this->post('/invoices', ['to' => $to, 'period' => '2026-10'])->assertSessionHasErrors('invoice');
+
+        $this->get("/invoices/{$invoice->id}/print")->assertOk()->assertSee('INV-2610-0001');
+
+        $this->post("/invoices/{$invoice->id}/cancel", ['reason' => 'Wrong month'])->assertSessionHasNoErrors();
+        $this->assertSame('cancelled', $invoice->fresh()->status);
+        $this->assertDatabaseHas('invoices', ['number' => 'CN-2610-0001', 'total' => -1 * round($invoice->total, 2)]);
+    }
+
+    public function test_a_medical_rep_sees_only_their_territory(): void
+    {
+        app(ConfirmImport::class)->handle($this->import(), $this->owner());
+        $rep = MedicalRep::orderBy('id')->firstOrFail();
+        Customer::firstOrFail()->medicalReps()->sync([$rep->id => ['share_percent' => 100]]);
+        $user = User::factory()->create(['role' => 'medical_rep', 'medical_rep_id' => $rep->id]);
+        $this->actingAs($user);
+
+        $this->get('/dashboard')->assertRedirect(route('my.index'));
+        $this->get('/my-territory?period=2026-10')->assertOk()->assertSee('ZAMAN MEDICAL STORE');
+        $this->get("/payroll/{$rep->id}/payslip?period=2026-10")->assertOk()->assertSee('Net pay');
+        $this->get('/imports')->assertForbidden();
+        $other = MedicalRep::where('id', '!=', $rep->id)->firstOrFail();
+        $this->get("/payroll/{$other->id}/payslip")->assertForbidden();
+    }
+
+    public function test_a_user_limited_to_one_distributor_cannot_open_anothers_file(): void
+    {
+        $import = $this->import();
+        $hamdan = Distributor::where('name', 'Hamdan Enterprises')->value('id');
+        $this->actingAs(User::factory()->role('accounts')->create(['distributor_ids' => [$hamdan]]));
+
+        $this->get("/imports/{$import->id}")->assertForbidden();
+        $this->get('/imports')->assertOk()->assertDontSee('Irfan Enterprises');
     }
 }

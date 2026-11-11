@@ -36,6 +36,7 @@ class CustomerPageController
         $search = trim((string) $request->query('q'));
 
         $base = Customer::query()
+            ->when($request->user()->visibleDistributorIds(), fn (Builder $q, $ids) => $q->whereIn('distributor_id', $ids))
             ->when($distributorId, fn (Builder $q) => $q->where('distributor_id', $distributorId))
             ->when($search !== '', fn (Builder $q) => $q->where(fn (Builder $w) => $w
                 ->where('name', 'like', "%{$search}%")->orWhere('area', 'like', "%{$search}%")->orWhere('code', $search)));
@@ -60,7 +61,7 @@ class CustomerPageController
             'reps' => MedicalRep::where('is_active', true)->with('territory:id,name')->orderBy('name')->get(['id', 'name', 'territory_id']),
             'distributorId' => $distributorId,
             'search' => $search,
-            'canAssign' => $request->user()->hasRole('accounts'),
+            'canAssign' => $request->user()->hasRole('accounts', 'data_entry'),
         ]);
     }
 

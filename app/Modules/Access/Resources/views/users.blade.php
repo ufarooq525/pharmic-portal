@@ -1,79 +1,116 @@
-<x-layouts.app title="Users & roles">
-    <x-page-header title="Users and roles" sub="Each person signs in with their own account. Their role decides what they can open and change." />
+@php
+    $tones = ['Full' => 'ok', 'Edit' => 'info', 'View' => 'mute', 'None' => 'bad', 'Own territory' => 'warn'];
+    $distributorNames = $distributors->pluck('name', 'id');
+    $scopeOf = function ($u) use ($distributorNames) {
+        if ($u->role?->value === 'medical_rep') {
+            return $u->medicalRep ? $u->medicalRep->territory->name.' only' : 'No rep linked';
+        }
+        $ids = $u->visibleDistributorIds();
 
-    <section class="card flex flex-col gap-4" aria-labelledby="users-h">
-        <h2 id="users-h" class="card-title">Users</h2>
-        <div class="table-wrap">
-            <table class="data">
-                <thead><tr><th scope="col">Name</th><th scope="col">Email</th><th scope="col">Role</th><th scope="col">Status</th><th scope="col"><span class="sr-only">Save</span></th></tr></thead>
-                <tbody>
-                @foreach ($users as $user)
-                    <tr>
-                        <td class="font-bold">{{ $user->name }}</td>
-                        <td>{{ $user->email }}</td>
-                        <td colspan="3">
-                            <form method="post" action="{{ route('users.update', $user) }}" class="flex flex-wrap items-center gap-2">
-                                @csrf @method('put')
-                                <label for="role-{{ $user->id }}" class="sr-only">Role for {{ $user->name }}</label>
-                                <select id="role-{{ $user->id }}" name="role" class="field min-h-9 w-auto py-1">
-                                    @foreach ($roles as $role)
-                                        <option value="{{ $role->value }}" @selected($user->role === $role)>{{ $role->label() }}</option>
-                                    @endforeach
-                                </select>
-                                <label for="active-{{ $user->id }}" class="sr-only">Status for {{ $user->name }}</label>
-                                <select id="active-{{ $user->id }}" name="is_active" class="field min-h-9 w-auto py-1">
-                                    <option value="1" @selected($user->is_active)>Active</option>
-                                    <option value="0" @selected(! $user->is_active)>Deactivated</option>
-                                </select>
-                                <button class="btn btn-sm">Save</button>
-                            </form>
-                        </td>
-                    </tr>
-                @endforeach
-                </tbody>
-            </table>
-        </div>
-    </section>
+        return $ids === null ? 'All distributors' : collect($ids)->map(fn ($id) => $distributorNames[$id] ?? '?')->join(', ');
+    };
+    $editUser = $users->firstWhere('id', $editing);
+@endphp
+<x-layouts.app title="Users & roles" description="Logins, roles and which data each person can see.">
+    <x-page-header title="Users and roles" sub="Each person has their own login. The role decides what they can open and change; the scope decides which data they see." />
 
-    <section class="card flex flex-col gap-4" aria-labelledby="add-h">
-        <h2 id="add-h" class="card-title">Add a user</h2>
-        <form method="post" action="{{ route('users.store') }}" class="grid gap-3 sm:grid-cols-2 lg:grid-cols-5 lg:items-end">
-            @csrf
-            <div class="flex flex-col gap-1.5"><label for="n" class="label">Name</label><input id="n" name="name" value="{{ old('name') }}" required class="field"></div>
-            <div class="flex flex-col gap-1.5"><label for="e" class="label">Email</label><input id="e" name="email" type="email" value="{{ old('email') }}" required class="field"></div>
-            <div class="flex flex-col gap-1.5"><label for="r" class="label">Role</label>
-                <select id="r" name="role" class="field">
-                    @foreach ($roles as $role)<option value="{{ $role->value }}" @selected(old('role') === $role->value)>{{ $role->label() }}</option>@endforeach
-                </select>
+    <nav class="tabs" aria-label="Users and roles">
+        <a href="{{ route('users.index') }}" class="tab" @if ($tab === 'users') aria-current="page" @endif>Users</a>
+        <a href="{{ route('users.index', ['tab' => 'permissions']) }}" class="tab" @if ($tab === 'permissions') aria-current="page" @endif>Role permissions</a>
+    </nav>
+
+    @if ($tab === 'permissions')
+        <section class="card" aria-labelledby="perm-h">
+            <h2 id="perm-h" class="card-title">Role permissions</h2>
+            <div class="table-wrap">
+                <table class="data">
+                    <thead><tr><th scope="col">Module or action</th>@foreach ($roles as $role)<th scope="col">{{ $role->label() }}</th>@endforeach</tr></thead>
+                    <tbody>
+                    @foreach ($permissions as $action => $levels)
+                        <tr>
+                            <td>{{ $action }}</td>
+                            @foreach ($levels as $level)
+                                <td><x-chip :tone="$tones[$level]">{{ $level }}</x-chip></td>
+                            @endforeach
+                        </tr>
+                    @endforeach
+                    </tbody>
+                </table>
             </div>
-            <div class="flex flex-col gap-1.5"><label for="p" class="label">Temporary password</label><input id="p" name="password" type="password" minlength="10" required autocomplete="new-password" class="field"></div>
-            <button class="btn btn-primary">Add user</button>
-        </form>
-    </section>
+            <p class="m-0 text-[12px] text-muted">“Own territory” means a medical rep sees only their own customers, sales, incentive and payslip on their “My territory” page. Any role except Owner can also be limited to some distributors.</p>
+        </section>
+    @else
+        <section class="card" aria-labelledby="users-h">
+            <h2 id="users-h" class="card-title">Users</h2>
+            <div class="table-wrap">
+                <table class="data">
+                    <thead><tr><th scope="col">Name</th><th scope="col">Login</th><th scope="col">Role</th><th scope="col">Data scope</th><th scope="col">Status</th><th scope="col"><span class="sr-only">Edit</span></th></tr></thead>
+                    <tbody>
+                    @foreach ($users as $u)
+                        <tr>
+                            <td class="font-bold">{{ $u->name }}</td>
+                            <td class="num text-[13px]">{{ $u->email }}</td>
+                            <td>{{ $u->role?->label() }}</td>
+                            <td>{{ $scopeOf($u) }}</td>
+                            <td><x-chip :tone="$u->is_active ? 'ok' : 'mute'">{{ $u->is_active ? 'Active' : 'Deactivated' }}</x-chip></td>
+                            <td class="text-right"><a href="{{ route('users.index', ['edit' => $u->id]) }}#user-form" class="btn btn-sm">Edit</a></td>
+                        </tr>
+                    @endforeach
+                    </tbody>
+                </table>
+            </div>
+        </section>
 
-    <section class="card flex flex-col gap-4" aria-labelledby="perm-h">
-        <h2 id="perm-h" class="card-title">What each role can do</h2>
-        <div class="table-wrap">
-            <table class="data">
-                <thead><tr><th scope="col">Action</th>@foreach ($roles as $role)<th scope="col">{{ $role->label() }}</th>@endforeach</tr></thead>
-                <tbody>
-                @foreach ($permissions as $action => $allowed)
-                    <tr>
-                        <td>{{ $action }}</td>
+        <section id="user-form" class="card scroll-mt-4" aria-labelledby="uf-h">
+            <h2 id="uf-h" class="card-title">{{ $editUser ? 'Edit '.$editUser->name : 'Add a user' }}</h2>
+            <form method="post" action="{{ $editUser ? route('users.update', $editUser) : route('users.store') }}" class="grid gap-4 sm:grid-cols-[repeat(auto-fit,minmax(200px,1fr))]">
+                @csrf
+                @if ($editUser) @method('put') @endif
+                @unless ($editUser)
+                    <div class="flex flex-col gap-1.5"><label for="u-n" class="label">Name</label><input id="u-n" name="name" value="{{ old('name') }}" required maxlength="100" class="field"></div>
+                    <div class="flex flex-col gap-1.5"><label for="u-e" class="label">Email (login)</label><input id="u-e" name="email" type="email" value="{{ old('email') }}" required class="field"></div>
+                    <div class="flex flex-col gap-1.5"><label for="u-p" class="label">Temporary password</label><input id="u-p" name="password" type="password" minlength="10" required autocomplete="new-password" class="field"></div>
+                @endunless
+                <div class="flex flex-col gap-1.5">
+                    <label for="u-r" class="label">Role</label>
+                    <select id="u-r" name="role" class="field">
                         @foreach ($roles as $role)
-                            <td>
-                                @if (in_array($role->value, $allowed, true))
-                                    <x-chip tone="ok">Yes</x-chip>
-                                @else
-                                    <x-chip tone="mute">No</x-chip>
-                                @endif
-                            </td>
+                            <option value="{{ $role->value }}" @selected(old('role', $editUser?->role?->value ?? 'viewer') === $role->value)>{{ $role->label() }}</option>
                         @endforeach
-                    </tr>
-                @endforeach
-                </tbody>
-            </table>
-        </div>
-        <p class="text-[13px] text-muted">Medical reps get their own territory view (customers, sales, incentive, payslip) in phase 2.</p>
-    </section>
+                    </select>
+                </div>
+                <div class="flex flex-col gap-1.5">
+                    <label for="u-rep" class="label">Medical rep record (for the Medical rep role)</label>
+                    <select id="u-rep" name="medical_rep_id" class="field">
+                        <option value="">–</option>
+                        @foreach ($reps as $rep)
+                            <option value="{{ $rep->id }}" @selected((int) old('medical_rep_id', $editUser?->medical_rep_id) === $rep->id)>{{ $rep->name }} · {{ $rep->territory->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                @if ($editUser)
+                    <div class="flex flex-col gap-1.5">
+                        <label for="u-a" class="label">Status</label>
+                        <select id="u-a" name="is_active" class="field">
+                            <option value="1" @selected($editUser->is_active)>Active</option>
+                            <option value="0" @selected(! $editUser->is_active)>Deactivated</option>
+                        </select>
+                    </div>
+                @endif
+                <fieldset class="m-0 flex flex-col gap-2 border-0 p-0 sm:col-span-full">
+                    <legend class="label mb-1">Limit to these distributors (leave all unticked for all distributors)</legend>
+                    <div class="flex flex-wrap gap-x-5 gap-y-2">
+                        @php($picked = array_map('intval', old('distributor_ids', $editUser?->distributor_ids ?? [])))
+                        @foreach ($distributors as $d)
+                            <label class="flex items-center gap-2"><input type="checkbox" name="distributor_ids[]" value="{{ $d->id }}" @checked(in_array($d->id, $picked, true)) class="size-4"> {{ $d->name }}</label>
+                        @endforeach
+                    </div>
+                </fieldset>
+                <div class="flex gap-2 sm:col-span-full">
+                    <button class="btn btn-primary">{{ $editUser ? 'Save' : 'Add user' }}</button>
+                    @if ($editUser)<a href="{{ route('users.index') }}" class="btn">Cancel</a>@endif
+                </div>
+            </form>
+        </section>
+    @endif
 </x-layouts.app>
