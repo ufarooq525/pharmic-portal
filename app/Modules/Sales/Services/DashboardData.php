@@ -76,7 +76,7 @@ class DashboardData
             [$label, $tone] = match ($import?->status) {
                 Import::CONFIRMED => ['Confirmed', 'ok'],
                 Import::NEEDS_REVIEW => ['Needs review', 'warn'],
-                Import::BLOCKED => ['Blocked', 'bad'],
+                Import::BLOCKED => ['Wrong file', 'bad'],
                 default => ['File not received', 'mute'],
             };
 

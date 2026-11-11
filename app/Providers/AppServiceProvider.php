@@ -37,6 +37,7 @@ class AppServiceProvider extends ServiceProvider
                 ['distributors.index', 'Distributors', 'distributors.*', null],
                 ['customers.index', 'Customers', 'customers.*', null],
                 ['inventory.index', 'Inventory', 'inventory.*', null],
+                ['ledger.index', 'Ledger', 'ledger.*', null],
                 ['reports.show', 'Reports', 'reports.*', null],
                 ['products.index', 'Products & taxes', 'products.*', null],
             ];

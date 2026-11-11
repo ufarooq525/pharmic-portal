@@ -2,7 +2,7 @@
     use App\Modules\Distribution\Models\Distributor;
     $layouts = Distributor::LAYOUTS;
     $bonusSources = Distributor::BONUS_SOURCES;
-    $statuses = ['confirmed' => ['Confirmed', 'ok'], 'needs_review' => ['Needs review', 'warn'], 'blocked' => ['Blocked', 'bad']];
+    $statuses = ['confirmed' => ['Confirmed', 'ok'], 'needs_review' => ['Needs review', 'warn'], 'blocked' => ['Wrong file', 'bad']];
 @endphp
 <x-layouts.app title="Distributors" description="Each distributor's file format: report layout, header name, bonus source and product spellings.">
     <x-page-header title="Distributors" sub="Every distributor’s software prints a different report. Each file is checked against the profile saved here before anything is posted." />

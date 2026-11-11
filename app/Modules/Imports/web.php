@@ -14,6 +14,7 @@ Route::middleware('auth')->prefix('imports')->name('imports.')->controller(Impor
     Route::middleware('role:accounts,data_entry')->group(function () {
         Route::post('/', 'store')->name('store');
         Route::post('{import}/map', 'map')->name('map');
+        Route::delete('{import}', 'discard')->name('discard');
     });
     Route::post('{import}/confirm', 'confirm')->middleware('role:accounts')->name('confirm');
     Route::post('{import}/reverse', 'reverse')->middleware('role:owner')->name('reverse');

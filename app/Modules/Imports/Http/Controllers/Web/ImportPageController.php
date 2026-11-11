@@ -13,6 +13,7 @@ use App\Modules\Imports\Services\ReadImport;
 use App\Support\Period;
 use Carbon\CarbonImmutable;
 use DomainException;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -36,7 +37,7 @@ class ImportPageController
         ]);
     }
 
-    public function store(StoreImportRequest $request, ReadImport $read): RedirectResponse
+    public function store(StoreImportRequest $request, ReadImport $read): RedirectResponse|JsonResponse
     {
         try {
             $import = $read->handle(
@@ -46,10 +47,47 @@ class ImportPageController
                 $request->user(),
             );
         } catch (RuntimeException $e) {
-            return back()->withInput()->withErrors(['file' => $e->getMessage()]);
+            return $request->expectsJson()
+                ? response()->json(['message' => $e->getMessage(), 'errors' => ['file' => [$e->getMessage()]]], 422)
+                : back()->withInput()->withErrors(['file' => $e->getMessage()]);
         }
 
-        return redirect()->route('imports.show', $import)->with('status', 'File read. Check the customers below, then confirm.');
+        $failed = collect($import->checks)->reject(fn ($c) => $c['ok']);
+        [$flashKey, $status] = $failed->isEmpty()
+            ? ['status', 'File read. Check the customers below, then confirm.']
+            : ['warning', 'File read, but '.$failed->count().' '.str('check')->plural($failed->count()).' failed. It may be the wrong file.'];
+
+        if ($request->expectsJson()) {
+            // The upload screen ticks these off one by one, like the approved prototype, then opens the review.
+            $checks = collect($import->checks)->keyBy('key');
+            session()->flash($flashKey, $status);
+
+            return response()->json([
+                'redirect' => route('imports.show', $import),
+                'steps' => [
+                    ['label' => 'Recognising the layout', 'result' => Distributor::LAYOUTS[$import->layout] ?? $import->layout, 'ok' => $checks['format']['ok'] ?? true],
+                    ['label' => 'Reading the header', 'result' => '“'.$import->distributor_in_file.'” · '.($import->period_from?->format('j M Y') ?? 'no dates').' to '.($import->period_to?->format('j M Y') ?? '?'), 'ok' => ($checks['distributor']['ok'] ?? true) && ($checks['period']['ok'] ?? true)],
+                    ['label' => 'Reading customers and lines', 'result' => count($import->customers).' customers · '.$import->rows()->count().' product lines', 'ok' => true],
+                    ['label' => 'Checking against the grand total', 'result' => fmt_num($import->parsed_units).' units read · file says '.fmt_num($import->file_units), 'ok' => $checks['totals']['ok'] ?? true],
+                ],
+            ]);
+        }
+
+        return redirect()->route('imports.show', $import)->with($flashKey, $status);
+    }
+
+    /** Throw away a file that was never confirmed: wrong distributor, wrong month or a bad export. */
+    public function discard(Import $import): RedirectResponse
+    {
+        abort_if($import->isConfirmed(), 422, 'A confirmed import has to be undone by the owner first.');
+
+        $period = $import->period->format('Y-m');
+        $distributorId = $import->distributor_id;
+        Storage::delete($import->file_path);
+        $import->delete();
+
+        return redirect()->route('imports.index', ['period' => $period, 'distributor' => $distributorId])
+            ->with('status', 'The file was discarded. Nothing was posted. Upload the right file below.');
     }
 
     public function show(Request $request, Import $import, ImportPreview $preview): View
@@ -67,6 +105,7 @@ class ImportPageController
             'canMap' => $request->user()->hasRole('accounts', 'data_entry') && ! $import->isConfirmed(),
             'canConfirm' => $request->user()->hasRole('accounts') && $import->status === Import::NEEDS_REVIEW && $data['unmapped'] === [],
             'canReverse' => $request->user()->hasRole() && $import->isConfirmed(),
+            'canDiscard' => $request->user()->hasRole('accounts', 'data_entry') && ! $import->isConfirmed(),
         ]);
     }
 

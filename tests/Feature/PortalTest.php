@@ -9,6 +9,7 @@ use App\Modules\Distribution\Models\Distributor;
 use App\Modules\Distribution\Models\MedicalRep;
 use App\Modules\Imports\Models\Import;
 use App\Modules\Imports\Services\ConfirmImport;
+use App\Modules\Ledger\Services\LedgerBuilder;
 use App\Modules\Sales\Models\SaleLine;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -62,7 +63,8 @@ class PortalTest extends TestCase
 
         $this->get('/login')->assertOk()
             ->assertHeader('X-Robots-Tag', 'noindex, nofollow, noarchive, nosnippet, noai, noimageai')
-            ->assertSee('<meta name="robots" content="noindex, nofollow, noarchive">', false);
+            ->assertSee('<meta name="robots" content="noindex, nofollow, noarchive">', false)
+            ->assertSee('data-password-toggle', false);
     }
 
     public function test_active_users_sign_in_and_deactivated_users_cannot(): void
@@ -106,6 +108,7 @@ class PortalTest extends TestCase
         $this->get('/inventory?period=2026-10')->assertOk()->assertSee('Gynofol Tab');
         $this->get('/products?period=2026-10')->assertOk()->assertSee('withholding tax rate');
         $this->get('/users')->assertOk()->assertSee('What each role can do');
+        $this->get('/ledger?year=2026&distributor='.Distributor::where('name', 'Irfan Enterprises')->value('id'))->assertOk()->assertSee('Sales for October 2026');
         $this->get('/distributors?distributor='.Distributor::where('name', 'Irfan Enterprises')->value('id'))->assertOk()
             ->assertSee('IRFAN ENTERPRISES')->assertSee('GYNOFOL TAB')->assertSee('955');
 
@@ -205,5 +208,48 @@ class PortalTest extends TestCase
         $this->actingAs($this->owner())->put("/distributors/{$irfan->id}", $profile)->assertSessionHasNoErrors();
 
         $this->assertSame('none', $irfan->fresh()->bonus_source);
+    }
+
+    public function test_the_ledger_debits_confirmed_sales_and_credits_payments(): void
+    {
+        $import = $this->import();
+        app(ConfirmImport::class)->handle($import, $this->owner());
+        $irfan = Distributor::where('name', 'Irfan Enterprises')->firstOrFail();
+        $sales = (float) SaleLine::sum('value_exfp');
+
+        $this->actingAs(User::factory()->role('accounts')->create())
+            ->post("/ledger/{$irfan->id}/payments", ['paid_on' => '2026-11-05', 'amount' => 1000, 'method' => 'bank', 'reference' => 'TRX-1'])
+            ->assertSessionHasNoErrors();
+
+        $statement = app(LedgerBuilder::class)->statement($irfan->fresh(), 2026);
+        $this->assertEqualsWithDelta($sales, $statement['debit'], 0.01);
+        $this->assertEqualsWithDelta(1000, $statement['credit'], 0.01);
+        $this->assertEqualsWithDelta($irfan->opening_balance + $sales - 1000, $statement['closing'], 0.01);
+
+        // Undoing the import takes its sales back out of the ledger.
+        app(ConfirmImport::class)->reverse($import->fresh());
+        $this->assertEqualsWithDelta(0, app(LedgerBuilder::class)->statement($irfan->fresh(), 2026)['debit'], 0.01);
+
+        $this->actingAs(User::factory()->role('viewer')->create())->post("/ledger/{$irfan->id}/payments", [])->assertForbidden();
+    }
+
+    public function test_a_wrong_file_shows_a_warning_and_can_be_discarded(): void
+    {
+        $import = $this->import();
+        $import->update(['status' => Import::BLOCKED, 'checks' => [['key' => 'distributor', 'ok' => false, 'message' => 'The file header reads “HAMDAN ENTERPRISES”, not Irfan Enterprises.']]]);
+        $this->actingAs($this->owner());
+
+        $this->get("/imports/{$import->id}")->assertOk()->assertSee('This looks like the wrong file')->assertSee('HAMDAN ENTERPRISES');
+        $this->delete("/imports/{$import->id}")->assertRedirect();
+
+        $this->assertModelMissing($import);
+    }
+
+    public function test_a_confirmed_import_cannot_be_discarded(): void
+    {
+        $import = $this->import();
+        app(ConfirmImport::class)->handle($import, $this->owner());
+
+        $this->actingAs($this->owner())->delete("/imports/{$import->id}")->assertStatus(422);
     }
 }

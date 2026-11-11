@@ -1,17 +1,53 @@
 @php
     $t = $totals;
-    $statusChip = ['confirmed' => ['Confirmed', 'ok'], 'needs_review' => ['Needs review', 'warn'], 'blocked' => ['Blocked', 'bad']][$import->status];
+    $statusChip = ['confirmed' => ['Confirmed', 'ok'], 'needs_review' => ['Needs review', 'warn'], 'blocked' => ['Wrong file', 'bad']][$import->status];
     $attention = collect($customers)->where('attention', true)->count();
     $layouts = \App\Modules\Distribution\Models\Distributor::LAYOUTS;
     $bonusSource = $import->distributor->bonus_source;
+    $failed = collect($import->checks)->reject(fn ($c) => $c['ok']);
+    $reupload = route('imports.index', ['period' => $period->format('Y-m'), 'distributor' => $import->distributor_id]).'#upload';
 @endphp
 <x-layouts.app title="{{ $import->distributor->name }} · {{ $period->format('F Y') }}" description="Review of the customer-wise file from {{ $import->distributor->name }} for {{ $period->format('F Y') }}.">
     <x-page-header :title="$import->distributor->name.' · '.$period->format('F Y')">
         <x-chip :tone="$statusChip[1]" class="text-[13px]">{{ $statusChip[0] }}</x-chip>
         <a href="{{ route('imports.file', $import) }}" class="btn btn-sm">Open the PDF</a>
         <a href="{{ route('imports.index', ['period' => $period->format('Y-m')]) }}" class="btn btn-sm">All files</a>
+        @if ($canDiscard && $failed->isEmpty())
+            <form method="post" action="{{ route('imports.discard', $import) }}" data-confirm="Discard this file? Nothing has been posted from it yet.">
+                @csrf
+                @method('delete')
+                <button class="btn btn-sm">Wrong file? Discard</button>
+            </form>
+        @endif
     </x-page-header>
     <p class="-mt-3 text-muted">{{ $import->original_name }} · {{ $layouts[$import->layout] ?? $import->layout }} · header reads “{{ $import->distributor_in_file }}”</p>
+
+    @if ($failed->isNotEmpty() && ! $import->isConfirmed())
+        <section class="flex flex-wrap items-start gap-4 rounded-2xl border-2 border-bad bg-bad-soft p-4 text-bad" role="alert" aria-labelledby="wrong-h">
+            <span class="flex size-11 flex-none items-center justify-center rounded-full bg-bad text-[22px] font-extrabold text-surface" aria-hidden="true">!</span>
+            <div class="flex min-w-0 flex-[1_1_320px] flex-col gap-1.5">
+                <h2 id="wrong-h" class="m-0 text-[18px] font-extrabold">This looks like the wrong file</h2>
+                <ul class="m-0 list-disc pl-5 font-semibold">
+                    @foreach ($failed as $check)
+                        <li>{{ $check['message'] }}</li>
+                    @endforeach
+                </ul>
+                <p class="m-0">Nothing has been posted. Upload the right file, or discard this one.</p>
+            </div>
+            @if ($canDiscard)
+                <div class="flex flex-wrap gap-2 self-center">
+                    <a href="{{ $reupload }}" class="btn border-transparent bg-bad text-surface">Upload the right file</a>
+                    <form method="post" action="{{ route('imports.discard', $import) }}" data-confirm="Discard this file? Nothing has been posted from it.">
+                        @csrf
+                        @method('delete')
+                        <button class="btn border-bad bg-transparent text-bad">Discard</button>
+                    </form>
+                </div>
+            @endif
+        </section>
+    @elseif ($import->isConfirmed() && $canReverse)
+        <p class="m-0 rounded-[14px] bg-sunk px-3.5 py-3 text-[13px] text-muted">Posted by mistake? “Undo this import” at the bottom takes its sales, stock movements and ledger entry back out. Then upload the right file.</p>
+    @endif
 
     <ul class="grid gap-2.5 sm:grid-cols-2 xl:grid-cols-4" aria-label="Checks">
         @foreach ($import->checks as $check)
@@ -122,7 +158,7 @@
         @else
             <span class="font-bold">
                 @if ($import->isConfirmed()) Confirmed {{ $import->confirmed_at?->format('j M Y, g:i a') }}
-                @elseif ($import->status === 'blocked') Blocked: fix the failed check or upload the right file
+                @elseif ($import->status === 'blocked') Wrong file: upload the right one or discard this
                 @elseif ($unmapped) Link every product before confirming
                 @else Waiting for Accounts to confirm
                 @endif

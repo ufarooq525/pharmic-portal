@@ -3,6 +3,7 @@
 namespace App\Modules\Distribution\Models;
 
 use App\Modules\Imports\Models\Import;
+use App\Modules\Ledger\Models\Payment;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
@@ -45,6 +46,11 @@ class Distributor extends Model
     public function imports(): HasMany
     {
         return $this->hasMany(Import::class);
+    }
+
+    public function payments(): HasMany
+    {
+        return $this->hasMany(Payment::class);
     }
 
     public function aliases(): HasMany
