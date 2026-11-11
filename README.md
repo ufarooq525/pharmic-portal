@@ -38,6 +38,12 @@ Modules: Access (login, users, roles), Catalog (products, dated rates and taxes)
 
 ## Setup (Windows with Laragon/XAMPP, or a Linux VPS)
 
+With Laragon: clone into `C:\laragon\www\pharmic-portal`, start Laragon (Apache + MySQL), put
+poppler's `pdftotext.exe` in `tools\poppler\` (ignored by git) or point `PDFTOTEXT_PATH` at it,
+run `npm install && npm run build`, then double-click `setup-windows.bat`. The site opens at
+http://pharmic-portal.test.
+
+
 Requirements: PHP 8.3+, Composer, Node 20+, MySQL 8 (or PostgreSQL), and poppler's `pdftotext`.
 
 - Linux: `sudo apt install poppler-utils`
