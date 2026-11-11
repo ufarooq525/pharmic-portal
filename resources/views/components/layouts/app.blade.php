@@ -25,6 +25,7 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body>
+<div id="page-loader" class="page-loader" role="progressbar" aria-label="Loading" aria-hidden="true"></div>
 <a href="#main" class="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-surface focus:px-4 focus:py-2">Skip to content</a>
 
 <header class="border-b border-line bg-surface">

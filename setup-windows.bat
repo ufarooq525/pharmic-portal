@@ -20,7 +20,7 @@ where composer >nul 2>nul || set "COMPOSER_CMD=php %LARAGON%\bin\composer\compos
 if not exist .env copy .env.example .env >nul
 
 echo == Installing PHP packages
-call %COMPOSER_CMD% install --no-interaction --prefer-dist --no-progress || goto :fail
+call %COMPOSER_CMD% install --no-interaction --prefer-dist --no-progress --optimize-autoloader || goto :fail
 
 findstr /r /c:"^APP_KEY=base64" .env >nul || php artisan key:generate --force || goto :fail
 
@@ -33,6 +33,10 @@ if not exist storage\app\.seeded (
     echo seeded> storage\app\.seeded
 )
 if not exist public\storage php artisan storage:link
+
+echo == Speed: caching config, routes, events and views
+php artisan optimize:clear >nul
+php artisan optimize || goto :fail
 
 echo.
 echo Done. Open http://pharmic-portal.test (Laragon: Menu ^> Reload if the address does not open)

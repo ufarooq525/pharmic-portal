@@ -57,7 +57,8 @@ function lockButtons(form, busy) {
     form.querySelectorAll('button:not([type="button"]), input[type="submit"]').forEach((button) => {
         if (busy) {
             button.dataset.idleLabel ??= button.textContent;
-            if (button.dataset.busyLabel) button.textContent = button.dataset.busyLabel;
+            const label = button.dataset.busyLabel || button.textContent.trim();
+            button.replaceChildren(Object.assign(document.createElement('span'), { className: 'spinner', ariaHidden: 'true' }), document.createTextNode(' ' + label));
         } else if (button.dataset.idleLabel !== undefined) {
             button.textContent = button.dataset.idleLabel;
         }
@@ -74,7 +75,9 @@ document.addEventListener('submit', (event) => {
         event.preventDefault();
         return;
     }
-    if (event.defaultPrevented || form.hasAttribute('data-upload') || form.method.toLowerCase() === 'get') return;
+    if (event.defaultPrevented || form.hasAttribute('data-upload')) return;
+    showLoader();
+    if (form.method.toLowerCase() === 'get') return;
 
     // After the browser has collected the form data, so the clicked button's value still posts.
     setTimeout(() => lockButtons(form, true), 0);
@@ -82,8 +85,51 @@ document.addEventListener('submit', (event) => {
 
 // Coming back with the browser's Back button shows the cached page: unlock it.
 window.addEventListener('pageshow', (event) => {
+    hideLoader();
     if (event.persisted) document.querySelectorAll('form[aria-busy]').forEach((form) => lockButtons(form, false));
 });
+
+/* Page loader: a bar across the top from the moment a link is clicked until the next page shows. */
+const loader = document.getElementById('page-loader');
+let loaderTimer;
+function showLoader() {
+    if (!loader) return;
+    clearTimeout(loaderTimer);
+    // Fast pages never flash the bar; it appears only if loading takes over 120 ms.
+    loaderTimer = setTimeout(() => { loader.dataset.active = ''; document.body.setAttribute('aria-busy', 'true'); }, 120);
+}
+function hideLoader() {
+    clearTimeout(loaderTimer);
+    if (loader) delete loader.dataset.active;
+    document.body.removeAttribute('aria-busy');
+}
+
+const isPageLink = (a, event) => a && a.href && !a.target && !a.hasAttribute('download')
+    && a.origin === location.origin && !(a.pathname === location.pathname && a.hash)
+    && !(event && (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0))
+    && !/\/(file|export|print|payslip|template)(\?|$|\/)/.test(a.pathname);
+
+document.addEventListener('click', (event) => {
+    const a = event.target.closest('a');
+    if (!event.defaultPrevented && isPageLink(a, event)) showLoader();
+});
+
+/* Speed: start fetching a page when the pointer rests on its link, so the click opens it almost at once. */
+const prefetched = new Set();
+let hoverTimer;
+function prefetch(a) {
+    if (!isPageLink(a) || prefetched.has(a.href) || prefetched.size > 40 || navigator.connection?.saveData) return;
+    prefetched.add(a.href);
+    document.head.appendChild(Object.assign(document.createElement('link'), { rel: 'prefetch', href: a.href, as: 'document' }));
+}
+document.addEventListener('mouseover', (event) => {
+    const a = event.target.closest('a');
+    if (!a) return;
+    clearTimeout(hoverTimer);
+    hoverTimer = setTimeout(() => prefetch(a), 80);
+});
+document.addEventListener('mouseout', () => clearTimeout(hoverTimer));
+document.addEventListener('touchstart', (event) => prefetch(event.target.closest('a')), { passive: true });
 
 /* AJAX upload: drag and drop, upload progress, then the four reading steps from the prototype. */
 const formatSize = (bytes) => (bytes > 1048576 ? (bytes / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(bytes / 1024)) + ' KB');
@@ -112,6 +158,7 @@ function setupUpload(form) {
         dot.className = 'flex size-7 flex-none items-center justify-center rounded-full text-[13px] font-extrabold '
             + ({ idle: 'bg-seg text-nav', now: 'bg-info-soft text-info', ok: 'bg-accent text-white', bad: 'bg-bad text-white' })[state];
         dot.textContent = state === 'ok' ? '✓' : state === 'bad' ? '✕' : String(index + 1);
+        if (state === 'now') dot.replaceChildren(Object.assign(document.createElement('span'), { className: 'spinner size-3.5', ariaHidden: 'true' }));
     };
 
     const showErrors = (messages) => {
@@ -184,7 +231,8 @@ function setupUpload(form) {
                 markStep(i, step.ok ? 'ok' : 'bad', step.result);
             }
             q('[data-progress-label]').textContent = 'Opening the review…';
-            await wait(500);
+            showLoader();
+            await wait(400);
             window.location.assign(body.redirect);
         });
         xhr.addEventListener('error', () => showErrors(['The upload stopped. Check the connection and try again.']));

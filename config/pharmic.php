@@ -7,4 +7,7 @@ return [
     'phone' => env('COMPANY_PHONE'),
     'ntn' => env('COMPANY_NTN'),
     'strn' => env('COMPANY_STRN'),
+
+    // Full path to poppler's pdftotext, e.g. C:/laragon/www/pharmic-portal/tools/poppler/pdftotext.exe
+    'pdftotext' => env('PDFTOTEXT_PATH') ?: null,
 ];

@@ -184,9 +184,19 @@
     .rank { @apply flex size-8 flex-none items-center justify-center rounded-full bg-seg text-[13px] font-extrabold text-nav; }
     .dot { @apply inline-block size-2.5 flex-none rounded-full; }
 
+    /* Loaders: a thin bar across the top while a page loads, and a spinner inside busy buttons */
+    .page-loader { position: fixed; inset: 0 0 auto 0; z-index: 60; height: 3px; pointer-events: none; opacity: 0; transition: opacity .2s; overflow: hidden; }
+    .page-loader::before { content: ''; position: absolute; inset: 0; width: 40%; background: linear-gradient(90deg, transparent, var(--sky-accent), var(--sky-go), transparent);
+        animation: page-loader 1.1s ease-in-out infinite; }
+    .page-loader[data-active] { opacity: 1; }
+    .spinner { @apply inline-block size-4 flex-none animate-spin rounded-full border-2 border-current border-r-transparent align-[-2px]; }
+    [aria-busy='true'] { cursor: progress; }
+
     /* Dark sticky action bar (import review) */
     .action-bar { @apply sticky bottom-3 flex flex-wrap items-center justify-between gap-3.5 rounded-2xl bg-bar px-[18px] py-3.5 text-white; }
 }
+
+@keyframes page-loader { from { transform: translateX(-100%); } to { transform: translateX(250%); } }
 
 @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { transition: none !important; animation: none !important; }

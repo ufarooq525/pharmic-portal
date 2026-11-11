@@ -65,7 +65,12 @@ final class PdfText
     /** PDFTOTEXT_PATH in .env points at the binary when it is not on PATH (e.g. C:/poppler/Library/bin/pdftotext.exe). */
     private static function binary(): string
     {
-        return ($_SERVER['PDFTOTEXT_PATH'] ?? '') ?: (($_ENV['PDFTOTEXT_PATH'] ?? '') ?: (getenv('PDFTOTEXT_PATH') ?: 'pdftotext'));
+        // From config inside the app (works with config:cache); straight from the environment when the
+        // parser runs on its own, e.g. the sample-file tests.
+        $configured = class_exists(\Illuminate\Container\Container::class) && \Illuminate\Container\Container::getInstance()->bound('config')
+            ? config('pharmic.pdftotext') : null;
+
+        return $configured ?: (($_SERVER['PDFTOTEXT_PATH'] ?? '') ?: (($_ENV['PDFTOTEXT_PATH'] ?? '') ?: (getenv('PDFTOTEXT_PATH') ?: 'pdftotext')));
     }
 
     /** @param list<string> $command */
