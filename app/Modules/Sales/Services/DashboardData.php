@@ -84,40 +84,39 @@ class DashboardData
         })->all();
     }
 
-    /** What someone has to do before the month can close, most urgent first. */
+    /** What someone has to do before the month can close, most urgent first: [what, detail, cta, tone, url]. */
     private function actions(CarbonImmutable $period): array
     {
         $actions = [];
         $q = ['period' => $period->format('Y-m')];
-        $pending = Import::whereDate('period', $period)->where('status', '!=', Import::CONFIRMED)->with('distributor:id,name')->get(['id', 'distributor_id', 'status']);
+        $month = $period->format('F');
+        $pending = Import::whereDate('period', $period)->where('status', '!=', Import::CONFIRMED)
+            ->with('distributor:id,name')->get(['id', 'distributor_id', 'status', 'checks', 'customers']);
+        $unmapped = ImportRow::whereIn('import_id', $pending->pluck('id'))->whereNull('product_id')
+            ->toBase()->selectRaw('import_id, COUNT(DISTINCT product_name) AS names')->groupBy('import_id')->pluck('names', 'import_id');
 
-        foreach ($pending->where('status', Import::BLOCKED) as $i) {
-            $actions[] = ['tone' => 'bad', 'text' => "{$i->distributor->name}: the file failed a check (wrong month, name or totals).", 'url' => route('imports.show', $i), 'cta' => 'Open'];
+        foreach ($pending->sortBy(fn ($i) => $i->status === Import::BLOCKED ? 0 : 1) as $i) {
+            $failed = collect($i->checks)->firstWhere('ok', false);
+            $names = (int) ($unmapped[$i->id] ?? 0);
+
+            $actions[] = $i->status === Import::BLOCKED
+                ? ['what' => "{$i->distributor->name} file", 'detail' => $failed['message'] ?? 'The file failed a check.', 'cta' => 'Open file', 'tone' => 'bad', 'url' => route('imports.show', $i)]
+                : ['what' => "{$i->distributor->name} file", 'detail' => ($names ? $names.' product '.str('name')->plural($names).' not linked yet; ' : 'Uploaded; ').count($i->customers).' customers waiting for review', 'cta' => 'Review import', 'tone' => 'warn', 'url' => route('imports.show', $i)];
         }
 
-        $unmapped = ImportRow::whereIn('import_id', $pending->pluck('id'))->whereNull('product_id')->distinct()->count('product_name');
-        if ($unmapped) {
-            $actions[] = ['tone' => 'bad', 'text' => "{$unmapped} product ".str('name')->plural($unmapped).' in uploaded files not linked to a product yet.', 'url' => route('imports.index', $q), 'cta' => 'Map'];
-        }
-
-        foreach ($pending->where('status', Import::NEEDS_REVIEW) as $i) {
-            $actions[] = ['tone' => 'warn', 'text' => "{$i->distributor->name}: uploaded, waiting for review and confirmation.", 'url' => route('imports.show', $i), 'cta' => 'Review'];
-        }
-
-        $missing = Distributor::whereDoesntHave('imports', fn ($w) => $w->whereDate('period', $period))->pluck('name');
-        if ($missing->isNotEmpty()) {
-            $actions[] = ['tone' => 'mute', 'text' => 'No file yet from '.$missing->join(', ', ' and ').'.', 'url' => route('imports.index', $q), 'cta' => 'Upload'];
+        foreach (Distributor::whereDoesntHave('imports', fn ($w) => $w->whereDate('period', $period))->orderBy('name')->get(['id', 'name']) as $d) {
+            $actions[] = ['what' => "{$d->name} file", 'detail' => "No file received yet for {$month}", 'cta' => 'Upload', 'tone' => 'mute', 'url' => route('imports.index', $q + ['distributor' => $d->id])];
         }
 
         $noRep = SaleLine::whereDate('period', $period)->whereDoesntHave('customer.medicalReps')->distinct()->count('customer_id');
         if ($noRep) {
-            $actions[] = ['tone' => 'warn', 'text' => "{$noRep} customers who bought this month have no medical rep, so their incentive is on hold.", 'url' => route('customers.index', $q + ['status' => 'needs_rep']), 'cta' => 'Assign'];
+            $actions[] = ['what' => 'Customers without a rep', 'detail' => "{$noRep} customers bought in {$month}; their incentive is on hold", 'cta' => 'Assign reps', 'tone' => 'warn', 'url' => route('customers.index', $q + ['status' => 'needs_rep'])];
         }
 
         foreach (array_filter($this->stockCover($period), fn ($s) => $s['level'] !== 'ok') as $s) {
-            $actions[] = ['tone' => $s['level'] === 'out' ? 'bad' : 'warn', 'text' => $s['level'] === 'out'
-                ? "{$s['name']} is out of stock."
-                : "{$s['name']} has about ".fmt_num($s['cover'], 1).' months of stock left ('.fmt_num($s['closing']).' units).', 'url' => route('inventory.index', $q), 'cta' => 'Stock'];
+            $actions[] = ['what' => "{$s['name']} stock", 'detail' => $s['level'] === 'out'
+                ? 'Out of stock ('.fmt_num($s['closing']).' units)'
+                : 'About '.fmt_num($s['cover'], 1).' months left at the current pace ('.fmt_num($s['closing']).' units)', 'cta' => 'Inventory', 'tone' => $s['level'] === 'out' ? 'bad' : 'warn', 'url' => route('inventory.index', $q)];
         }
 
         return $actions;
@@ -150,14 +149,18 @@ class DashboardData
     /** Sales and incentive credited to each rep, split by the customer's share. */
     private function byRep(CarbonImmutable $period): array
     {
-        return DB::table('sale_lines as s')
+        $rows = DB::table('sale_lines as s')
             ->join('customer_medical_rep as cr', 'cr.customer_id', '=', 's.customer_id')
             ->join('medical_reps as m', 'm.id', '=', 'cr.medical_rep_id')
             ->join('territories as t', 't.id', '=', 'm.territory_id')
             ->whereDate('s.period', $period)
             ->selectRaw('m.name, t.name AS territory, SUM(s.value_exfp * cr.share_percent / 100) AS value, SUM(s.incentive * cr.share_percent / 100) AS incentive')
             ->groupBy('m.id', 'm.name', 't.name')->orderByDesc('value')->get()
-            ->map(fn ($r) => ['label' => $r->name, 'value' => (float) $r->value, 'display' => fmt_rs($r->value), 'sub' => $r->territory.' · incentive '.fmt_rs($r->incentive)])->all();
+            ->map(fn ($r) => ['name' => $r->name, 'territory' => $r->territory, 'value' => (float) $r->value, 'incentive' => (float) $r->incentive])->all();
+
+        $waiting = (float) SaleLine::whereDate('period', $period)->whereDoesntHave('customer.medicalReps')->sum('incentive');
+
+        return ['rows' => $rows, 'waiting' => $waiting];
     }
 
     private function byProduct(CarbonImmutable $period): array
@@ -165,8 +168,8 @@ class DashboardData
         return SaleLine::whereDate('period', $period)
             ->join('products', 'products.id', '=', 'sale_lines.product_id')
             ->toBase()->selectRaw('products.name, SUM(sale_lines.units) AS units, SUM(sale_lines.bonus_units) AS bonus, SUM(sale_lines.value_exfp) AS value')
-            ->groupBy('products.id', 'products.name')->orderByDesc('value')->get()
-            ->map(fn ($r) => ['label' => $r->name, 'value' => (float) $r->value, 'display' => fmt_rs($r->value), 'sub' => fmt_num($r->units).' units + '.fmt_num($r->bonus).' bonus'])->all();
+            ->groupBy('products.id', 'products.name')->orderByDesc('units')->get()
+            ->map(fn ($r) => ['label' => $r->name, 'value' => (float) $r->units, 'display' => fmt_num($r->units), 'sub' => '+ '.fmt_num($r->bonus).' bonus · '.fmt_rs($r->value)])->all();
     }
 
     private function topCustomers(CarbonImmutable $period): array

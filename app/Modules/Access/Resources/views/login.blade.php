@@ -21,7 +21,7 @@
 <body class="flex min-h-screen items-center justify-center px-4 py-10">
 <main class="card flex w-full max-w-[420px] flex-col gap-5 p-7">
     <div class="flex items-center gap-2.5">
-        <span class="flex size-10 items-center justify-center rounded-xl bg-accent text-lg font-extrabold text-on-accent" aria-hidden="true">P</span>
+        <span class="flex size-10 items-center justify-center rounded-xl bg-accent text-lg font-extrabold text-white" aria-hidden="true">P</span>
         <div>
             <h1 class="text-xl font-extrabold tracking-tight">Pharmic LH</h1>
             <p class="text-[13px] text-muted">Distribution portal</p>

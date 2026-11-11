@@ -1,4 +1,6 @@
 @import '@fontsource-variable/manrope';
+@import '@fontsource/roboto-mono/400.css';
+@import '@fontsource/roboto-mono/500.css';
 @import 'tailwindcss';
 
 @source '../views';
@@ -8,126 +10,171 @@
 @source inline('{bg,text}-{ok,warn,bad,info,mute}{,-soft} chip-{ok,warn,bad,info,mute}');
 
 /*
- * Skyline design tokens. Every colour is a variable, so light and dark mode switch by changing
- * data-theme on <html>; no dark: variants are needed in the views.
+ * Skyline design tokens, copied exactly from the approved Skyline board. Light and dark switch by
+ * changing data-theme on <html>; views only use the token classes, never raw colours.
  */
 :root {
-    --app-bg: #f4f6fa;
-    --app-surface: #ffffff;
-    --app-sunk: #f1f4f9;
-    --app-line: #e1e6ef;
-    --app-ink: #131a2a;
-    --app-muted: #556079;
-    --app-accent: #2457d6;
-    --app-accent-strong: #1a3f9e;
-    --app-accent-soft: #eaf0fd;
-    --app-on-accent: #ffffff;
-    --app-ok: #17603a;
-    --app-ok-soft: #e5f4ea;
-    --app-warn: #8a3a07;
-    --app-warn-soft: #fff1e6;
-    --app-bad: #b42318;
-    --app-bad-soft: #fde8e6;
-    --app-info: #1f4fb8;
-    --app-info-soft: #e6eefc;
-    --app-mute: #4a5468;
-    --app-mute-soft: #eef0f3;
-    --app-chart-2: #e0802f;
-    --app-shadow: 0 1px 2px rgb(19 26 42 / 0.06);
+    --sky-bg: #f3f5f9;
+    --sky-surface: #fefefe;
+    --sky-ink: #141b2b;
+    --sky-muted: #56617a;
+    --sky-nav: #3d4860;
+    --sky-line: #e2e7f0;
+    --sky-line2: #ccd3e0;
+    --sky-hair: #eef1f6;
+    --sky-head: #f1f4f8;
+    --sky-sunk: #f7f9fb;
+    --sky-seg: #e6eaf1;
+    --sky-soft: #eaf0fc;
+    --sky-softfg: #1f4fb7;
+    --sky-accent: #2558d7;
+    --sky-accent-text: #2558d7;
+    --sky-bar: #141b2b;
+    --sky-go: #9db8ff;
+    --sky-ok-bg: #e5f4ea;
+    --sky-ok-fg: #17603a;
+    --sky-warn-bg: #fff1e6;
+    --sky-warn-fg: #8a3a07;
+    --sky-bad-bg: #fde8e6;
+    --sky-bad-fg: #b42318;
+    --sky-info-bg: #e6eefc;
+    --sky-info-fg: #1f4fb7;
+    --sky-mute-bg: #eef0f3;
+    --sky-mute-fg: #4a5468;
+    --sky-shadow: 0 1px 2px rgb(19 26 42 / 0.06);
     color-scheme: light;
 }
 
 :root[data-theme='dark'] {
-    --app-bg: #0d121c;
-    --app-surface: #151c29;
-    --app-sunk: #1b2434;
-    --app-line: #27324a;
-    --app-ink: #e7ecf5;
-    --app-muted: #9aa6bd;
-    --app-accent: #7499f6;
-    --app-accent-strong: #a9c0fb;
-    --app-accent-soft: #1b2a4d;
-    --app-on-accent: #0b1222;
-    --app-ok: #6fd39a;
-    --app-ok-soft: #12301f;
-    --app-warn: #f2a665;
-    --app-warn-soft: #3a2412;
-    --app-bad: #f49088;
-    --app-bad-soft: #3b1715;
-    --app-info: #8fb1f7;
-    --app-info-soft: #172a4c;
-    --app-mute: #b3bdcf;
-    --app-mute-soft: #222b3b;
-    --app-chart-2: #f2a665;
-    --app-shadow: 0 1px 2px rgb(0 0 0 / 0.4);
+    --sky-bg: #0e1320;
+    --sky-surface: #171e2e;
+    --sky-ink: #e8ecf5;
+    --sky-muted: #9ba6bd;
+    --sky-nav: #b5bed1;
+    --sky-line: #27304a;
+    --sky-line2: #3a4563;
+    --sky-hair: #222b41;
+    --sky-head: #1e2639;
+    --sky-sunk: #121828;
+    --sky-seg: #222b41;
+    --sky-soft: #1d2b52;
+    --sky-softfg: #a9c0ff;
+    --sky-accent: #3562dd;
+    --sky-accent-text: #9db8ff;
+    --sky-bar: #222c47;
+    --sky-ok-bg: #143524;
+    --sky-ok-fg: #7bd39a;
+    --sky-warn-bg: #3b2a14;
+    --sky-warn-fg: #f0b26b;
+    --sky-bad-bg: #3f1d1a;
+    --sky-bad-fg: #f59a90;
+    --sky-info-bg: #1b2c52;
+    --sky-info-fg: #9db8ff;
+    --sky-mute-bg: #252d40;
+    --sky-mute-fg: #aab3c6;
+    --sky-shadow: 0 1px 2px rgb(0 0 0 / 0.35);
     color-scheme: dark;
 }
 
 @theme inline {
     --font-sans: 'Manrope Variable', 'Segoe UI', system-ui, sans-serif;
-    --color-bg: var(--app-bg);
-    --color-surface: var(--app-surface);
-    --color-sunk: var(--app-sunk);
-    --color-line: var(--app-line);
-    --color-ink: var(--app-ink);
-    --color-muted: var(--app-muted);
-    --color-accent: var(--app-accent);
-    --color-accent-strong: var(--app-accent-strong);
-    --color-accent-soft: var(--app-accent-soft);
-    --color-on-accent: var(--app-on-accent);
-    --color-ok: var(--app-ok);
-    --color-ok-soft: var(--app-ok-soft);
-    --color-warn: var(--app-warn);
-    --color-warn-soft: var(--app-warn-soft);
-    --color-bad: var(--app-bad);
-    --color-bad-soft: var(--app-bad-soft);
-    --color-info: var(--app-info);
-    --color-info-soft: var(--app-info-soft);
-    --color-mute: var(--app-mute);
-    --color-mute-soft: var(--app-mute-soft);
-    --color-chart-2: var(--app-chart-2);
+    --font-mono: 'Roboto Mono', ui-monospace, Consolas, monospace;
+    --color-bg: var(--sky-bg);
+    --color-surface: var(--sky-surface);
+    --color-ink: var(--sky-ink);
+    --color-muted: var(--sky-muted);
+    --color-nav: var(--sky-nav);
+    --color-line: var(--sky-line);
+    --color-line2: var(--sky-line2);
+    --color-hair: var(--sky-hair);
+    --color-head: var(--sky-head);
+    --color-sunk: var(--sky-sunk);
+    --color-seg: var(--sky-seg);
+    --color-soft: var(--sky-soft);
+    --color-softfg: var(--sky-softfg);
+    --color-accent: var(--sky-accent);
+    --color-accent-text: var(--sky-accent-text);
+    --color-bar: var(--sky-bar);
+    --color-go: var(--sky-go);
+    --color-ok: var(--sky-ok-fg);
+    --color-ok-soft: var(--sky-ok-bg);
+    --color-warn: var(--sky-warn-fg);
+    --color-warn-soft: var(--sky-warn-bg);
+    --color-bad: var(--sky-bad-fg);
+    --color-bad-soft: var(--sky-bad-bg);
+    --color-info: var(--sky-info-fg);
+    --color-info-soft: var(--sky-info-bg);
+    --color-mute: var(--sky-mute-fg);
+    --color-mute-soft: var(--sky-mute-bg);
 }
 
 @layer base {
-    html { background: var(--app-bg); }
+    html { background: var(--sky-bg); }
     body { @apply bg-bg font-sans text-[14px] leading-[1.45] text-ink antialiased; }
     h1, h2, h3 { text-wrap: balance; }
-    :focus-visible { outline: 2px solid var(--app-accent); outline-offset: 2px; }
-    [x-cloak] { display: none !important; }
+    a { color: var(--sky-accent-text); }
+    :focus-visible { outline: 2px solid var(--sky-accent); outline-offset: 2px; }
 }
 
 @layer components {
-    .card { @apply rounded-[18px] bg-surface p-5; box-shadow: var(--app-shadow); }
-    .card-title { @apply text-[17px] font-extrabold tracking-[-0.01em]; }
-    .num { font-variant-numeric: tabular-nums; }
+    /* Cards and headings */
+    .card { @apply flex min-w-0 flex-col gap-3.5 rounded-[20px] bg-surface p-5; box-shadow: var(--sky-shadow); }
+    .card-title { @apply m-0 text-[18px] font-extrabold tracking-[-0.01em]; }
+    .page-title { @apply m-0 text-[30px] font-extrabold tracking-[-0.025em]; }
+    .num { @apply font-mono; font-variant-numeric: tabular-nums; }
 
-    .btn { @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-line bg-surface px-4 py-2 font-bold text-ink transition-colors hover:border-muted disabled:cursor-not-allowed disabled:opacity-50; }
-    .btn-primary { @apply border-accent bg-accent text-on-accent hover:border-accent-strong hover:bg-accent-strong; }
-    .btn-sm { @apply min-h-9 rounded-lg px-3 py-1.5 text-[13px]; }
+    /* Half-width cards wrap to full width under 460px of room, exactly like the Skyline board */
+    .blocks { @apply flex flex-wrap items-stretch gap-5; }
+    .block-half { flex: 1 1 460px; }
+    .block-full { flex: 1 1 100%; }
 
-    .field { @apply min-h-11 w-full rounded-xl border border-line bg-surface px-3 py-2 text-ink placeholder:text-muted; }
+    /* KPI tiles */
+    .kpi { @apply flex flex-col gap-1.5 rounded-[18px] bg-surface p-[18px]; box-shadow: var(--sky-shadow); }
+    .kpi-label { @apply text-[13px] font-semibold text-muted; }
+    .kpi-value { @apply text-[24px] font-extrabold tracking-[-0.02em]; font-variant-numeric: tabular-nums; }
+    .kpi-note { @apply self-start rounded-full bg-soft px-[9px] py-0.5 text-[12px] font-semibold text-softfg; }
+
+    /* Buttons and fields */
+    .btn { @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-line2 bg-surface px-3.5 py-2 font-bold text-ink no-underline transition-colors hover:border-muted disabled:cursor-not-allowed disabled:opacity-50; }
+    .btn-primary { @apply border-accent bg-accent font-extrabold text-white hover:opacity-90; }
+    .btn-sm { @apply min-h-9 rounded-[10px] px-3 py-1.5 text-[13px]; }
+    .btn-go { @apply border-transparent bg-go font-extrabold text-[#0b1430] hover:opacity-90; }
+    .field { @apply min-h-11 w-full rounded-xl border border-line2 bg-surface px-3 py-2 text-ink placeholder:text-muted; }
     .label { @apply text-[12px] font-bold text-muted; }
 
-    .chip { @apply inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-0.5 text-[11.5px] font-bold; }
+    /* Chips */
+    .chip { @apply inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-[9px] py-0.5 text-[11.5px] font-bold no-underline; }
     .chip-ok { @apply bg-ok-soft text-ok; }
     .chip-warn { @apply bg-warn-soft text-warn; }
     .chip-bad { @apply bg-bad-soft text-bad; }
     .chip-info { @apply bg-info-soft text-info; }
     .chip-mute { @apply bg-mute-soft text-mute; }
 
+    /* Tables: rounded header bar, hairline rows, soft total bar */
     .table-wrap { @apply overflow-x-auto; }
-    .data { @apply w-full border-separate border-spacing-0 text-[13.5px]; }
-    .data th { @apply bg-sunk px-3 py-2.5 text-left text-[12px] font-bold whitespace-nowrap text-muted first:rounded-l-xl last:rounded-r-xl; }
-    .data td { @apply border-b border-line px-3 py-2.5 align-middle; }
-    .data tfoot td { @apply border-0 bg-accent-soft font-extrabold text-accent-strong first:rounded-l-xl last:rounded-r-xl; }
-    .data .r { @apply text-right whitespace-nowrap; font-variant-numeric: tabular-nums; }
+    .data { @apply w-full border-separate border-spacing-0 text-[14px]; }
+    .data th { @apply bg-head px-3.5 py-2.5 text-left text-[12px] font-bold whitespace-nowrap text-muted first:rounded-l-xl last:rounded-r-xl; }
+    .data td { @apply border-b border-hair px-3.5 py-[11px] align-middle; }
+    .data tfoot td { @apply border-0 bg-soft font-extrabold text-softfg first:rounded-l-xl last:rounded-r-xl; }
+    .data tfoot tr:first-child td { box-shadow: 0 -6px 0 var(--sky-surface); }
+    .data td.r { @apply text-right font-mono whitespace-nowrap; font-variant-numeric: tabular-nums; }
+    .data th.r { @apply text-right; }
 
-    .tabs { @apply inline-flex max-w-full flex-wrap gap-1 rounded-2xl bg-sunk p-1; }
-    .tab { @apply rounded-xl px-3.5 py-2 font-bold text-muted hover:text-ink; }
-    .tab[aria-current='page'] { @apply bg-surface text-ink; box-shadow: var(--app-shadow); }
+    /* Segmented tabs */
+    .tabs { @apply inline-flex max-w-full flex-wrap gap-1 self-start rounded-[14px] bg-seg p-1; }
+    .tab { @apply rounded-[10px] px-3.5 py-[9px] font-bold text-nav no-underline hover:text-ink; }
+    .tab[aria-current='page'] { @apply bg-surface text-ink; }
 
-    .bar-track { @apply block h-3 overflow-hidden rounded-full bg-sunk; }
-    .bar-fill { @apply block h-full rounded-full bg-accent; }
+    /* Filter pills */
+    .pill { @apply inline-flex min-h-10 items-center rounded-full border border-line2 bg-surface px-3.5 py-[7px] font-bold text-ink no-underline; }
+    .pill[aria-current='page'] { @apply border-ink bg-ink text-bg; }
+
+    /* Bars */
+    .bar-track { @apply block h-3.5 overflow-hidden rounded-[7px] bg-hair; }
+    .bar-fill { @apply block h-full rounded-[7px] bg-accent; }
+
+    /* Dark sticky action bar (import review) */
+    .action-bar { @apply sticky bottom-3 flex flex-wrap items-center justify-between gap-3.5 rounded-2xl bg-bar px-[18px] py-3.5 text-white; }
 }
 
 @media (prefers-reduced-motion: reduce) {

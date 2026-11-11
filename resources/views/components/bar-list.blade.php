@@ -2,9 +2,9 @@
 {{-- $items: list of ['label' => string, 'value' => float, 'display' => string, 'sub' => ?string] --}}
 @php($max = max(1, ...array_map(fn ($i) => (float) $i['value'], $items ?: [['value' => 1]])))
 @if (count($items))
-    <ul class="flex flex-col gap-3">
+    <ul class="m-0 flex list-none flex-col gap-3 p-0">
         @foreach ($items as $item)
-            <li class="grid grid-cols-[minmax(0,10rem)_minmax(0,1fr)_auto] items-center gap-3 sm:grid-cols-[minmax(0,13rem)_minmax(0,1fr)_7rem]">
+            <li class="grid grid-cols-[minmax(110px,190px)_minmax(0,1fr)_90px] items-center gap-3">
                 <span class="min-w-0">
                     <span class="block truncate font-semibold">{{ $item['label'] }}</span>
                     @isset($item['sub'])
