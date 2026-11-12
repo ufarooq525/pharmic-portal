@@ -19,7 +19,7 @@ class SaveUserRequest extends FormRequest
         return [
             'name' => [Rule::requiredIf($creating), 'string', 'max:100'],
             'email' => [Rule::requiredIf($creating), 'email', 'max:150', Rule::unique('users', 'email')],
-            'password' => [Rule::requiredIf($creating), Password::min(10)],
+            'password' => [Rule::requiredIf($creating), 'nullable', Password::min(10)],
             'is_active' => [Rule::requiredIf(! $creating), 'boolean'],
             'role' => ['required', Rule::enum(Role::class)],
             'medical_rep_id' => ['nullable', 'required_if:role,medical_rep', 'exists:medical_reps,id'],

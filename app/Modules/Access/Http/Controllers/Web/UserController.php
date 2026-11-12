@@ -39,7 +39,7 @@ class UserController
     public function update(SaveUserRequest $request, User $user, SaveUser $save): RedirectResponse
     {
         try {
-            $save->handle($request->scope() + ['is_active' => $request->boolean('is_active')], $user, $request->user());
+            $save->handle($request->scope() + ['is_active' => $request->boolean('is_active')] + array_filter(['password' => $request->validated('password')]), $user, $request->user());
         } catch (DomainException $e) {
             return back()->withErrors(['role' => $e->getMessage()]);
         }

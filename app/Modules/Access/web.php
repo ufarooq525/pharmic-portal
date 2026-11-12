@@ -1,5 +1,6 @@
 <?php
 
+use App\Modules\Access\Http\Controllers\Web\AccountController;
 use App\Modules\Access\Http\Controllers\Web\ActivityController;
 use App\Modules\Access\Http\Controllers\Web\LoginController;
 use App\Modules\Access\Http\Controllers\Web\UserController;
@@ -19,3 +20,8 @@ Route::middleware(['auth', 'role:owner'])->prefix('users')->name('users.')->grou
 });
 
 Route::get('activity', ActivityController::class)->middleware(['auth', 'role:accounts'])->name('activity.index');
+
+Route::middleware('auth')->prefix('account')->name('account.')->controller(AccountController::class)->group(function () {
+    Route::get('/', 'show')->name('show');
+    Route::put('password', 'updatePassword')->middleware('throttle:6,1')->name('password');
+});

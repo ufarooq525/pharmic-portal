@@ -93,6 +93,10 @@
                 </div>
                 @if ($editUser)
                     <div class="flex flex-col gap-1.5">
+                        <label for="u-pw" class="label">New password (leave empty to keep)</label>
+                        <input id="u-pw" name="password" type="password" minlength="10" autocomplete="new-password" class="field">
+                    </div>
+                    <div class="flex flex-col gap-1.5">
                         <label for="u-a" class="label">Status</label>
                         <select id="u-a" name="is_active" class="field">
                             <option value="1" @selected($editUser->is_active)>Active</option>

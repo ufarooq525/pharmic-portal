@@ -1,0 +1,20 @@
+# Protects the project when the whole folder is web-reachable (e.g. Laragon serving C:\laragon\www,
+# opened as http://localhost/pharmic-portal/). Only the public/ folder may be served: .env, storage
+# (uploaded PDFs, logs), vendor and the source code are refused. On a real server, point the
+# document root at public/ instead.
+Options -Indexes
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteRule ^$ public/ [R=302,L]
+    RewriteRule !^public(/|$) - [F,L]
+</IfModule>
+
+<IfModule !mod_rewrite.c>
+    Require all denied
+</IfModule>
+
+# Never serve dot-files (.env, .git, …) anywhere below this folder.
+<FilesMatch "^\.">
+    Require all denied
+</FilesMatch>

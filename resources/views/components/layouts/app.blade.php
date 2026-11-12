@@ -100,6 +100,9 @@
             <div class="sb-user flex items-center gap-2.5 rounded-[14px] bg-sunk px-3 py-2.5" title="{{ $user->name }} · {{ $user->role->label() }}">
                 <span class="flex size-9 flex-none items-center justify-center rounded-full bg-seg text-[13px] font-extrabold text-nav" aria-hidden="true">{{ mb_strtoupper(mb_substr($user->name, 0, 1)) }}</span>
                 <span class="sb-label flex min-w-0 flex-1 flex-col leading-tight"><b class="truncate text-[13.5px]">{{ $user->name }}</b><span class="text-[12px] text-muted">{{ $user->role->label() }}</span></span>
+                <a href="{{ route('account.show') }}" class="icon-btn" title="My account: change password" aria-label="My account" data-drawer="#password-form">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="15" r="4"/><path d="m10.8 12.2 9.2-9.2M17 6l3 3M14 9l2 2"/></svg>
+                </a>
                 <form method="post" action="{{ route('logout') }}">
                     @csrf
                     <button class="icon-btn" aria-label="Log out" title="Log out">

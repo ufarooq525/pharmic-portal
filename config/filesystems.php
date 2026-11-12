@@ -33,7 +33,8 @@ return [
         'local' => [
             'driver' => 'local',
             'root' => storage_path('app/private'),
-            'serve' => true,
+            // Uploaded PDFs are only handed out through the signed-in download route.
+            'serve' => false,
             'throw' => false,
             'report' => false,
         ],
