@@ -44,7 +44,7 @@ class InvoiceController
             'month' => Invoice::with(['distributor:id,name,city', 'customer:id,name,area'])
                 ->whereBetween('period', [Period::start($period), Period::end($period)])
                 ->when($allowed !== null, fn ($q) => $q->whereIn('distributor_id', $allowed))
-                ->orderBy('number')->get(),
+                ->orderBy('number')->paginate(25)->withQueryString()->fragment('issued'),
             'canIssue' => $request->user()->hasRole('accounts'),
             'canCancel' => $request->user()->hasRole('owner'),
         ]);

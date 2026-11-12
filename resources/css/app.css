@@ -192,14 +192,15 @@
 
     /* Collapsed sidebar (wide screens): icons only, names show as tooltips */
     @media (min-width: 1024px) {
-        .sb-collapsed .sidebar { width: 76px; padding-inline: 10px; }
+        .sb-collapsed .sidebar { width: 88px; padding-inline: 8px; }
+        .sb-collapsed .sidebar .sb-head { padding-inline: 0; gap: 4px; }
+        .sb-collapsed .sidebar .sb-toggle { width: 32px; height: 36px; }
         .sb-collapsed .sidebar .sb-label { display: none !important; }
         .sb-collapsed .sidebar .sb-only { display: flex; }
         .sb-collapsed .sidebar .side-link { justify-content: center; gap: 0; padding-inline: 0; position: relative; min-height: 40px; }
         .sb-collapsed .sidebar .side-badge { position: absolute; top: 3px; right: 5px; padding-inline: 5px; }
         .sb-collapsed .sidebar .sb-user { flex-direction: column; padding: 8px 4px; gap: 6px; }
         .sb-collapsed .sidebar .sb-chevron { transform: rotate(180deg); transform-origin: 14.5px 12px; }
-        .sb-collapsed .sidebar > div:first-child { justify-content: center; padding-inline: 0; }
     }
     .icon-btn { @apply inline-flex size-10 flex-none items-center justify-center rounded-[12px] text-muted transition-colors hover:bg-sunk hover:text-ink; }
 

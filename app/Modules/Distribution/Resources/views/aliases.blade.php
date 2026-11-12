@@ -40,6 +40,7 @@
                     </tbody>
                 </table>
             </div>
+            {{ $aliases->links() }}
         @else
             <x-empty>No product names linked yet.</x-empty>
         @endif

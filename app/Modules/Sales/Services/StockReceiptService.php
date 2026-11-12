@@ -58,8 +58,12 @@ class StockReceiptService
 
         DB::transaction(function () use ($receipt, $user) {
             $short = [];
-            foreach ($receipt->movements()->with('product:id,name')->get() as $m) {
-                $onHand = (float) StockMovement::where('product_id', $m->product_id)->sum('units');
+            $movements = $receipt->movements()->with('product:id,name')->get();
+            // Stock on hand for every product in the receipt, in one grouped query.
+            $stock = StockMovement::whereIn('product_id', $movements->pluck('product_id'))->groupBy('product_id')
+                ->selectRaw('product_id, SUM(units) AS on_hand')->pluck('on_hand', 'product_id');
+            foreach ($movements as $m) {
+                $onHand = (float) ($stock[$m->product_id] ?? 0);
                 if ($onHand - $m->units < 0) {
                     $short[] = "{$m->product->name} (".fmt_num($onHand).' on hand, '.fmt_num($m->units).' to take out)';
                 }

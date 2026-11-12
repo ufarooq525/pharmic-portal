@@ -52,20 +52,18 @@
 <div class="flex min-h-screen">
     {{-- Sidebar: fixed on wide screens, slides in from the left on phones and tablets --}}
     <aside id="sidebar" class="sidebar" aria-label="Main">
-        <div class="flex items-center justify-between gap-2 px-3 pb-2 pt-1">
+        <div class="sb-head flex items-center justify-between gap-1 px-2 pb-2 pt-1">
             <a href="{{ route('dashboard') }}" class="flex items-center gap-2.5 text-ink no-underline">
                 <span class="flex size-9 items-center justify-center rounded-xl bg-accent font-extrabold text-white" aria-hidden="true">P</span>
                 <span class="sb-label flex flex-col leading-tight"><span class="text-[17px] font-extrabold tracking-[-0.02em]">Pharmic LH</span><span class="text-[11.5px] font-semibold text-muted">Distribution portal</span></span>
             </a>
+            <button type="button" class="icon-btn sb-toggle hidden lg:inline-flex" data-sidebar-collapse aria-pressed="false" aria-label="Collapse menu" title="Collapse menu">
+                <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2.5"/><path d="M9 4v16"/><path class="sb-chevron" d="m15.5 10-2 2 2 2"/></svg>
+            </button>
             <button type="button" class="icon-btn lg:hidden" data-sidebar-close aria-label="Close menu">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
             </button>
         </div>
-
-        <button type="button" class="side-link sb-toggle hidden lg:flex" data-sidebar-collapse aria-pressed="false" title="Collapse menu">
-            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2.5"/><path d="M9 4v16"/><path class="sb-chevron" d="m15.5 10-2 2 2 2"/></svg>
-            <span class="sb-label flex-1" data-collapse-label>Collapse menu</span>
-        </button>
 
         <a href="#period" class="side-link sb-only" title="Month end: {{ $period->format('F Y') }}" data-expand-to-period>
             <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2.5"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>

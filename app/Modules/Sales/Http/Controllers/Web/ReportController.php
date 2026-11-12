@@ -8,6 +8,7 @@ use App\Modules\Distribution\Models\MedicalRep;
 use App\Modules\Sales\Services\ReportBuilder;
 use App\Support\Period;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -20,7 +21,14 @@ class ReportController
         $period = Period::fromRequest($request);
         $filters = $this->filters($request);
 
-        return view('sales::report', $builder->build($type, $period, $filters) + [
+        $report = $builder->build($type, $period, $filters);
+        // Totals cover every row; the screen shows 50 rows a page. The CSV export has them all.
+        $page = LengthAwarePaginator::resolveCurrentPage();
+        $report['rows'] = new LengthAwarePaginator(array_slice($report['rows'], ($page - 1) * 50, 50), count($report['rows']), 50, $page, [
+            'path' => $request->url(), 'query' => $request->query(),
+        ]);
+
+        return view('sales::report', $report + [
             'type' => $type,
             'titles' => ReportBuilder::TITLES,
             'period' => $period,

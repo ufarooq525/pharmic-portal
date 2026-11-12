@@ -122,10 +122,14 @@ class ConfirmImport
                     $cancelled[] = "{$invoice->number} (credit note {$note->number})";
                 });
 
+            // Two grouped queries for all the file's customers, not two per customer.
+            $lastSales = SaleLine::whereIn('customer_id', $customerIds)->groupBy('customer_id')->selectRaw('customer_id, MAX(period) AS last')->pluck('last', 'customer_id');
+            $invoiced = Invoice::whereIn('customer_id', $customerIds)->distinct()->pluck('customer_id')->flip();
+
             $removed = 0;
             foreach (Customer::whereIn('id', $customerIds)->get() as $customer) {
-                $lastSale = SaleLine::where('customer_id', $customer->id)->max('period');
-                if ($lastSale === null && $customer->first_seen->isSameMonth($period) && ! Invoice::where('customer_id', $customer->id)->exists()) {
+                $lastSale = $lastSales[$customer->id] ?? null;
+                if ($lastSale === null && $customer->first_seen->isSameMonth($period) && ! $invoiced->has($customer->id)) {
                     $customer->medicalReps()->detach();
                     $customer->delete();
                     $removed++;

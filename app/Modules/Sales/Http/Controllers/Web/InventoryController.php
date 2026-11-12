@@ -74,7 +74,7 @@ class InventoryController
             'period' => $period,
             'rows' => $rows,
             'products' => Product::where('is_active', true)->orderBy('name')->get(['id', 'name', 'code']),
-            'receipts' => StockReceipt::with(['createdBy:id,name', 'revertedBy:id,name'])->latest('received_on')->latest('id')->limit(15)->get(),
+            'receipts' => StockReceipt::with(['createdBy:id,name', 'revertedBy:id,name'])->latest('received_on')->latest('id')->paginate(10, ['*'], 'receipts')->withQueryString()->fragment('receipts'),
             'canReceive' => $request->user()->hasRole('accounts'),
             'canEditRates' => $request->user()->hasRole('owner'),
         ]);

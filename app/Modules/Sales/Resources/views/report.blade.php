@@ -40,7 +40,7 @@
             </form>
         </div>
 
-        @if ($rows)
+        @if ($rows->isNotEmpty())
             <div class="table-wrap">
                 <table class="data">
                     <thead>
@@ -62,12 +62,13 @@
                     <tfoot>
                     <tr>
                         @foreach ($columns as $key => [$label, $kind])
-                            <td @class(['r' => $numeric($kind)])>{{ $loop->first ? 'Total' : ($totals[$key] !== null ? $format($totals[$key], $kind) : '') }}</td>
+                            <td @class(['r' => $numeric($kind)])>{{ $loop->first ? ($rows->hasPages() ? 'Total, all pages' : 'Total') : ($totals[$key] !== null ? $format($totals[$key], $kind) : '') }}</td>
                         @endforeach
                     </tr>
                     </tfoot>
                 </table>
             </div>
+            {{ $rows->links() }}
         @else
             <x-empty>No confirmed sales match these filters for {{ $period->format('F Y') }}.</x-empty>
         @endif

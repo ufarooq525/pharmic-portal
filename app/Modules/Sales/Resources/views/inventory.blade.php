@@ -115,7 +115,7 @@
         </section>
     @endif
 
-    <section class="card" aria-labelledby="rcpt-h">
+    <section id="receipts" class="card scroll-mt-4" aria-labelledby="rcpt-h">
         <h2 id="rcpt-h" class="card-title">Stock receipts</h2>
         @if ($receipts->isNotEmpty())
             <div class="table-wrap">
@@ -151,6 +151,7 @@
                     </tbody>
                 </table>
             </div>
+            {{ $receipts->links() }}
             <p class="m-0 text-[12px] text-muted">A wrong receipt can be reverted: its units come back out of stock and the receipt stays here marked “Reverted”. Reverting is refused if that stock has already been sold.</p>
         @else
             <x-empty>No stock received yet. Opening stock came from the Excel sheet.</x-empty>

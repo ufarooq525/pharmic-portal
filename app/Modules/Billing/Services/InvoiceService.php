@@ -57,7 +57,7 @@ class InvoiceService
     {
         return Invoice::where('kind', Invoice::INVOICE)->where('status', Invoice::ISSUED)
             ->where('distributor_id', $distributor->id)->where('customer_id', $customer?->id)
-            ->whereBetween('period', [$period->startOfMonth()->toDateString(), $period->endOfMonth()->toDateString()])->first();
+            ->whereBetween('period', [$period->startOfMonth()->toDateString(), $period->endOfMonth()->toDateString()])->with('lines')->first();
     }
 
     public function issue(Distributor $distributor, ?Customer $customer, CarbonImmutable $period, User $user): Invoice

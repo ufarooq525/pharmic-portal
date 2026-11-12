@@ -92,7 +92,7 @@
         </section>
     @endif
 
-    <section class="card" aria-labelledby="list-h">
+    <section id="issued" class="card scroll-mt-4" aria-labelledby="list-h">
         <h2 id="list-h" class="card-title">Issued in {{ $period->format('F Y') }}</h2>
         @if ($month->isNotEmpty())
             <div class="table-wrap">
@@ -112,6 +112,7 @@
                     </tbody>
                 </table>
             </div>
+            {{ $month->links() }}
         @else
             <x-empty>No invoices issued for {{ $period->format('F Y') }} yet.</x-empty>
         @endif

@@ -267,8 +267,7 @@ function syncCollapseButton() {
     if (!button) return;
     button.setAttribute('aria-pressed', String(collapsed));
     button.title = collapsed ? 'Expand menu' : 'Collapse menu';
-    const label = button.querySelector('[data-collapse-label]');
-    if (label) label.textContent = collapsed ? 'Expand menu' : 'Collapse menu';
+    button.setAttribute('aria-label', button.title);
 }
 document.addEventListener('click', (event) => {
     const toggle = event.target.closest('[data-sidebar-collapse]');

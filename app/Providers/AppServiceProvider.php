@@ -7,6 +7,7 @@ use App\Modules\Distribution\Models\Distributor;
 use App\Modules\Imports\Models\Import;
 use App\Support\Period;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 
@@ -20,7 +21,11 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         // Catch N+1 queries and silent attribute typos while developing.
+        // Strict mode outside production: lazy loading (N+1), silently discarded attributes and missing
+        // attributes throw, so they are caught while developing.
         Model::shouldBeStrict(! $this->app->isProduction());
+        Paginator::defaultView('components.pagination');
+        Paginator::defaultSimpleView('components.pagination');
 
         View::composer('components.layouts.app', function ($view) {
             $request = request();

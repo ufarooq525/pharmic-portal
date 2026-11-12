@@ -54,7 +54,7 @@ class MasterDataController
             'aliases' => ProductAlias::with(['distributor:id,name', 'product:id,name'])
                 ->when($distributorId, fn ($q) => $q->where('distributor_id', $distributorId))
                 ->orderBy(Distributor::select('name')->whereColumn('distributors.id', 'product_aliases.distributor_id'))
-                ->orderBy('name_in_file')->get(),
+                ->orderBy('name_in_file')->paginate(50)->withQueryString(),
             'canEdit' => $request->user()->hasRole('owner'),
         ]);
     }
