@@ -32,6 +32,17 @@ class ImportPageController
 {
     public function __construct(private readonly ImportRepository $imports) {}
 
+    /** "Import review" in the menu: opens the next file of the month that still needs someone. */
+    public function review(Request $request): RedirectResponse
+    {
+        $period = Period::fromRequest($request);
+        $next = $this->imports->nextForReview($period, $request->user()->visibleDistributorIds());
+
+        return $next
+            ? redirect()->route('imports.show', ['import' => $next, 'period' => $period->format('Y-m')])
+            : redirect()->route('imports.index', ['period' => $period->format('Y-m')])->with('status', 'Nothing to review for '.$period->format('F Y').'. Every uploaded file is confirmed.');
+    }
+
     public function index(Request $request, DistributorRepository $distributors): View
     {
         $period = Period::fromRequest($request);

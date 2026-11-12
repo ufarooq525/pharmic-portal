@@ -6,7 +6,8 @@ use Illuminate\Support\Facades\Route;
 Route::middleware('auth')->prefix('imports')->name('imports.')->controller(ImportPageController::class)->group(function () {
     Route::middleware('role:accounts,data_entry,viewer')->group(function () {
         Route::get('/', 'index')->name('index');
-        Route::get('{import}', 'show')->name('show');
+        Route::get('review', 'review')->name('review');
+        Route::get('{import}', 'show')->whereNumber('import')->name('show');
         Route::get('{import}/file', 'file')->name('file');
     });
 

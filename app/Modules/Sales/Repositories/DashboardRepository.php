@@ -55,29 +55,51 @@ class DashboardRepository
         ];
     }
 
+    /** What a blocked file's first failed check means, in the checklist's words. */
+    private const FAILED_CHECK = [
+        'period' => 'Wrong period in file',
+        'distributor' => 'Wrong distributor',
+        'totals' => 'Totals don\'t match',
+        'format' => 'Different format',
+    ];
+
     /** Distributors the viewer may see; null for all. */
     private ?array $scope = null;
 
-    /** @param list<int>|null $scope */
-    public function for(CarbonImmutable $period, ?array $scope = null): array
+    /** @var array{distributor: ?int, product: ?int, rep: ?int} Filters picked on the dashboard. */
+    private array $filters = ['distributor' => null, 'product' => null, 'rep' => null];
+
+    /**
+     * @param  list<int>|null  $scope
+     * @param  array{distributor?: ?int, product?: ?int, rep?: ?int}  $filters
+     */
+    public function for(CarbonImmutable $period, ?array $scope = null, array $filters = []): array
     {
         $this->scope = $scope;
+        $this->filters = array_merge($this->filters, array_intersect_key($filters, $this->filters));
 
-        // Cached per month and scope; any upload, confirm or stock change produces a new key.
-        $stamp = implode('|', [Import::max('updated_at'), DB::table('stock_movements')->max('id'), DB::table('customer_medical_rep')->max('updated_at'), json_encode($scope)]);
+        // Cached per month, scope and filters; any upload, confirm or stock change produces a new key.
+        $stamp = implode('|', [Import::max('updated_at'), DB::table('stock_movements')->max('id'), DB::table('customer_medical_rep')->max('updated_at'), json_encode($scope), json_encode($this->filters)]);
 
         return Cache::remember('dashboard:'.$period->format('Y-m').':'.md5($stamp), now()->addMinutes(10), fn () => $this->build($period));
     }
 
-    /** Sale lines limited to the viewer's distributors. */
+    /** Sale lines limited to the viewer's distributors and the dashboard filters. */
     private function sales()
     {
-        return SaleLine::query()->when($this->scope, fn ($q, $ids) => $q->whereIn('sale_lines.distributor_id', $ids));
+        return SaleLine::query()
+            ->when($this->scope, fn ($q, $ids) => $q->whereIn('sale_lines.distributor_id', $ids))
+            ->when($this->filters['distributor'], fn ($q, $id) => $q->where('sale_lines.distributor_id', $id))
+            ->when($this->filters['product'], fn ($q, $id) => $q->where('sale_lines.product_id', $id))
+            ->when($this->filters['rep'], fn ($q, $id) => $q->whereHas('customer.medicalReps', fn ($r) => $r->whereKey($id)));
     }
 
+    /** Distributors in the viewer's scope, narrowed to the picked one. */
     private function distributors()
     {
-        return Distributor::query()->when($this->scope, fn ($q, $ids) => $q->whereIn('id', $ids));
+        return Distributor::query()
+            ->when($this->scope, fn ($q, $ids) => $q->whereIn('id', $ids))
+            ->when($this->filters['distributor'], fn ($q, $id) => $q->whereKey($id));
     }
 
     private function build(CarbonImmutable $period): array
@@ -98,6 +120,7 @@ class DashboardRepository
             'byProduct' => $this->byProduct($period),
             'topCustomers' => $this->topCustomers($period),
             'stock' => $this->stockCover($period),
+            'filters' => $this->filters,
         ];
     }
 
@@ -117,11 +140,16 @@ class DashboardRepository
     /** One row per distributor: has this month's file arrived, and where is it in the flow. */
     private function checklist(CarbonImmutable $period): array
     {
-        $imports = Import::whereDate('period', $period)->when($this->scope, fn ($q, $ids) => $q->whereIn('distributor_id', $ids))->latest('id')->get(['id', 'distributor_id', 'status', 'period_from'])->unique('distributor_id')->keyBy('distributor_id');
+        $imports = Import::whereDate('period', $period)->when($this->scope, fn ($q, $ids) => $q->whereIn('distributor_id', $ids))->latest('id')->get(['id', 'distributor_id', 'status', 'checks'])->unique('distributor_id')->keyBy('distributor_id');
 
         return $this->distributors()->orderBy('name')->get(['id', 'name', 'city'])->map(function (Distributor $d) use ($imports) {
             $import = $imports->get($d->id);
-            [$label, $tone] = $import ? [$import->status->label(), $import->status->tone()] : ['File not received', 'mute'];
+            $failed = $import?->status === ImportStatus::Blocked ? collect($import->checks)->firstWhere('ok', false) : null;
+            [$label, $tone] = match (true) {
+                $import === null => ['File not received', 'mute'],
+                $failed !== null => [self::FAILED_CHECK[$failed['key'] ?? ''] ?? $import->status->label(), 'bad'],
+                default => [$import->status->label(), $import->status->tone()],
+            };
 
             return ['name' => $d->name, 'city' => $d->city, 'label' => $label, 'tone' => $tone, 'import_id' => $import?->id, 'distributor_id' => $d->id];
         })->all();

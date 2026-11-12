@@ -103,7 +103,11 @@ class PortalTest extends TestCase
         app(ConfirmImport::class)->handle($this->import(), $this->owner());
         $this->actingAs($this->owner());
 
-        $this->get('/dashboard?period=2026-10')->assertOk()->assertSee('October 2026')->assertSee('Needs your attention');
+        $this->get('/dashboard?period=2026-10')->assertOk()->assertSee('October 2026 at a glance')->assertSee('Needs your attention')
+            ->assertSee('Month-end checklist')->assertSee('Sales by distributor')->assertSee('Units by product')->assertSee('Import review');
+        $distributor = Import::first()->distributor_id;
+        $this->get('/dashboard?period=2026-10&distributor='.$distributor)->assertOk()->assertSee('Clear filters');
+        $this->get('/imports/review?period=2026-10')->assertRedirect(route('imports.index', ['period' => '2026-10']));
         $this->get('/imports?period=2026-10')->assertOk()->assertSee('Irfan Enterprises');
         $this->get('/imports/'.Import::first()->id)->assertOk()->assertSee('ZAMAN MEDICAL STORE');
         $this->get('/customers?period=2026-10')->assertOk()->assertSee('ZAMAN MEDICAL STORE');

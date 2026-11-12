@@ -32,4 +32,13 @@ class ImportRepository extends Repository
     {
         return max(0, $distributors - $this->query()->whereDate('period', $period)->where('status', ImportStatus::Confirmed)->distinct()->count('distributor_id'));
     }
+
+    /** The next file of the month someone has to look at: needs review first, then wrong files, oldest first. */
+    public function nextForReview(CarbonImmutable $period, ?array $scope): ?Import
+    {
+        return $this->query()->whereDate('period', $period)->where('status', '!=', ImportStatus::Confirmed)
+            ->when($scope, fn ($q, $ids) => $q->whereIn('distributor_id', $ids))
+            ->orderByRaw('CASE WHEN status = ? THEN 0 ELSE 1 END', [ImportStatus::NeedsReview->value])
+            ->oldest('id')->first(['id']);
+    }
 }

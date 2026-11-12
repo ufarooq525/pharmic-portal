@@ -189,6 +189,9 @@
     .side-link { @apply flex min-h-11 items-center gap-3 rounded-[12px] px-3 py-2 font-semibold text-nav no-underline transition-colors hover:bg-sunk hover:text-ink; }
     .side-link[aria-current='page'] { @apply bg-soft font-extrabold text-accent-text; }
     .sb-only { display: none; }
+    .nav-group { @apply mt-3 mb-1 block px-3 text-[11px] font-extrabold tracking-[0.08em] text-muted uppercase; }
+    .nav-group:first-child { @apply mt-1; }
+    .nav-rule { @apply mx-3 my-2 border-0 border-t border-line; }
 
     /* Collapsed sidebar (wide screens): icons only, names show as tooltips */
     @media (min-width: 1024px) {
