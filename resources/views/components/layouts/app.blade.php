@@ -82,7 +82,7 @@
             <noscript><button class="btn btn-sm">Go</button></noscript>
         </form>
 
-        <nav aria-label="Pages" class="flex flex-1 flex-col gap-0.5 overflow-y-auto py-2">
+        <nav aria-label="Pages" class="flex flex-1 flex-col gap-0.5 overflow-y-auto py-2 [scrollbar-width:thin]">
             @foreach ($navItems as $item)
                 <a href="{{ $item['url'] }}" @if ($item['active']) aria-current="page" @endif class="side-link" title="{{ $item['label'] }}">
                     <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">{!! $navIcons[$item['route']] ?? '<circle cx="12" cy="12" r="3"/>' !!}</svg>
