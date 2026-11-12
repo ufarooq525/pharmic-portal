@@ -2,82 +2,49 @@
 
 namespace App\Modules\Access\Http\Controllers\Web;
 
-use App\Modules\Access\Models\ActivityLog;
 use App\Models\User;
+use App\Modules\Access\Actions\SaveUser;
 use App\Modules\Access\Enums\Role;
-use App\Modules\Distribution\Models\Distributor;
-use App\Modules\Distribution\Models\MedicalRep;
+use App\Modules\Access\Http\Requests\SaveUserRequest;
+use App\Modules\Access\Repositories\UserRepository;
+use App\Modules\Distribution\Repositories\DistributorRepository;
+use App\Modules\Distribution\Repositories\MedicalRepRepository;
+use DomainException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
-use Illuminate\Validation\Rules\Password;
 use Illuminate\View\View;
 
 class UserController
 {
-    public function index(Request $request): View
+    public function index(Request $request, UserRepository $users, DistributorRepository $distributors, MedicalRepRepository $reps): View
     {
         return view('access::users', [
             'tab' => $request->query('tab') === 'permissions' ? 'permissions' : 'users',
-            'users' => User::with('medicalRep.territory')->orderByDesc('is_active')->orderBy('name')->get(),
+            'users' => $users->forAdmin(),
             'roles' => Role::cases(),
             'permissions' => self::PERMISSIONS,
-            'distributors' => Distributor::orderBy('name')->get(['id', 'name']),
-            'reps' => MedicalRep::with('territory')->where('is_active', true)->orderBy('name')->get(),
+            'distributors' => $distributors->visible(null, ['id', 'name']),
+            'reps' => $reps->withTerritory(activeOnly: true),
             'editing' => $request->integer('edit') ?: null,
         ]);
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(SaveUserRequest $request, SaveUser $save): RedirectResponse
     {
-        $data = $request->validate([
-            'name' => ['required', 'string', 'max:100'],
-            'email' => ['required', 'email', 'max:150', 'unique:users,email'],
-            'password' => ['required', Password::min(10)],
-        ] + $this->scopeRules());
+        $user = $save->handle($request->safe()->only(['name', 'email', 'password']) + $request->scope());
 
-        User::create($this->scope($data) + ['name' => $data['name'], 'email' => $data['email'], 'password' => $data['password'], 'is_active' => true]);
-        ActivityLog::record('Added user', "{$data['name']} ({$data['email']}) as ".Role::from($data['role'])->label());
-
-        return back()->with('status', "{$data['name']} can now sign in.");
+        return back()->with('status', "{$user->name} can now sign in.");
     }
 
-    public function update(Request $request, User $user): RedirectResponse
+    public function update(SaveUserRequest $request, User $user, SaveUser $save): RedirectResponse
     {
-        $data = $request->validate(['is_active' => ['required', 'boolean']] + $this->scopeRules());
-
-        // The owner cannot lock themselves out.
-        if ($user->is($request->user()) && ($data['role'] !== Role::Owner->value || ! $data['is_active'])) {
-            return back()->withErrors(['role' => 'You cannot remove your own owner access.']);
+        try {
+            $save->handle($request->scope() + ['is_active' => $request->boolean('is_active')], $user, $request->user());
+        } catch (DomainException $e) {
+            return back()->withErrors(['role' => $e->getMessage()]);
         }
 
-        $user->update($this->scope($data) + ['is_active' => (bool) $data['is_active']]);
-        ActivityLog::record('Changed user', "{$user->name}: ".Role::from($data['role'])->label().($data['is_active'] ? ', active' : ', deactivated'));
-
         return redirect()->route('users.index')->with('status', "{$user->name} updated.");
-    }
-
-    private function scopeRules(): array
-    {
-        return [
-            'role' => ['required', Rule::enum(Role::class)],
-            'medical_rep_id' => ['nullable', 'required_if:role,medical_rep', 'exists:medical_reps,id'],
-            'distributor_ids' => ['nullable', 'array'],
-            'distributor_ids.*' => ['integer', 'exists:distributors,id'],
-        ];
-    }
-
-    /** A medical rep is tied to their rep record; other roles may be limited to some distributors. */
-    private function scope(array $data): array
-    {
-        $isRep = $data['role'] === Role::MedicalRep->value;
-
-        return [
-            'role' => $data['role'],
-            'medical_rep_id' => $isRep ? (int) $data['medical_rep_id'] : null,
-            'distributor_ids' => ! $isRep && $data['role'] !== Role::Owner->value && ! empty($data['distributor_ids'])
-                ? array_map('intval', $data['distributor_ids']) : null,
-        ];
     }
 
     /**

@@ -26,7 +26,7 @@
                 @endforeach
             </div>
             <div class="flex flex-col items-end gap-1 text-right">
-                <span class="label">{{ $invoice->isCreditNote() ? 'Credit note' : 'Invoice' }}{{ $invoice->status === 'cancelled' ? ' · Cancelled' : '' }}</span>
+                <span class="label">{{ $invoice->isCreditNote() ? 'Credit note' : 'Invoice' }}{{ $invoice->status === \App\Modules\Billing\Enums\InvoiceStatus::Cancelled ? ' · Cancelled' : '' }}</span>
                 <span class="num text-[22px] font-extrabold">{{ $invoice->number }}</span>
                 <span class="text-muted">Issued {{ $invoice->issued_at?->format('j M Y') }}</span>
             </div>

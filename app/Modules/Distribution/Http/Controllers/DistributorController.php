@@ -2,19 +2,22 @@
 
 namespace App\Modules\Distribution\Http\Controllers;
 
-use App\Modules\Distribution\Models\Distributor;
-use App\Modules\Distribution\Models\MedicalRep;
-use Illuminate\Http\JsonResponse;
+use App\Modules\Distribution\Http\Resources\DistributorResource;
+use App\Modules\Distribution\Http\Resources\MedicalRepResource;
+use App\Modules\Distribution\Repositories\DistributorRepository;
+use App\Modules\Distribution\Repositories\MedicalRepRepository;
+use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 class DistributorController
 {
-    public function index(): JsonResponse
+    public function index(Request $request, DistributorRepository $distributors): AnonymousResourceCollection
     {
-        return response()->json(['data' => Distributor::orderBy('name')->get()]);
+        return DistributorResource::collection($distributors->visible($request->user()->visibleDistributorIds()));
     }
 
-    public function medicalReps(): JsonResponse
+    public function medicalReps(MedicalRepRepository $reps): AnonymousResourceCollection
     {
-        return response()->json(['data' => MedicalRep::with('territory:id,name')->orderBy('name')->get()]);
+        return MedicalRepResource::collection($reps->withTerritory());
     }
 }

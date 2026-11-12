@@ -2,95 +2,58 @@
 
 namespace App\Modules\Distribution\Http\Controllers\Web;
 
-use App\Modules\Access\Models\ActivityLog;
+use App\Modules\Distribution\Actions\AssignCustomerReps;
+use App\Modules\Distribution\Enums\CustomerFilter;
+use App\Modules\Distribution\Http\Requests\AssignRepsRequest;
 use App\Modules\Distribution\Models\Customer;
-use App\Modules\Distribution\Models\Distributor;
-use App\Modules\Distribution\Models\MedicalRep;
+use App\Modules\Distribution\Repositories\CustomerRepository;
+use App\Modules\Distribution\Repositories\DistributorRepository;
+use App\Modules\Distribution\Repositories\MedicalRepRepository;
 use App\Support\Period;
-use Carbon\CarbonImmutable;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 /**
- * The customer register is built from the monthly files. A customer missing from a month is never
- * deleted: it shows as "no purchase", and after three empty months as inactive.
+ * The customer register. Customers come from the distributors' monthly files and are never
+ * deleted: one that stops buying shows as "no purchase", and after three empty months as inactive.
  */
 class CustomerPageController
 {
-    public const STATUSES = [
-        'all' => 'All',
-        'active' => 'Bought this month',
-        'new' => 'New this month',
-        'needs_rep' => 'Needs a rep',
-        'no_purchase' => 'No purchase (1–2 months)',
-        'inactive' => 'Inactive (3+ months)',
-    ];
+    public function __construct(
+        private readonly CustomerRepository $customers,
+        private readonly DistributorRepository $distributors,
+        private readonly MedicalRepRepository $reps,
+    ) {}
 
     public function index(Request $request): View
     {
         $period = Period::fromRequest($request);
-        $status = array_key_exists($request->query('status'), self::STATUSES) ? $request->query('status') : 'all';
+        $filter = CustomerFilter::tryFrom((string) $request->query('status')) ?? CustomerFilter::All;
         $distributorId = $request->integer('distributor') ?: null;
         $search = trim((string) $request->query('q'));
-
-        $base = Customer::query()
-            ->when($request->user()->visibleDistributorIds(), fn (Builder $q, $ids) => $q->whereIn('distributor_id', $ids))
-            ->when($distributorId, fn (Builder $q) => $q->where('distributor_id', $distributorId))
-            ->when($search !== '', fn (Builder $q) => $q->where(fn (Builder $w) => $w
-                ->where('name', 'like', "%{$search}%")->orWhere('area', 'like', "%{$search}%")->orWhere('code', $search)));
-
-        $counts = collect(self::STATUSES)->map(fn ($label, $key) => $this->filter(clone $base, $key, $period)->count());
-
-        $customers = $this->filter($base, $status, $period)
-            ->with(['distributor:id,name', 'medicalReps:id,name,territory_id', 'medicalReps.territory:id,name'])
-            ->withSum(['saleLines as month_units' => fn ($q) => $q->whereDate('period', $period)], 'units')
-            ->withSum(['saleLines as month_value' => fn ($q) => $q->whereDate('period', $period)], 'value_tp')
-            ->orderBy('name')
-            ->paginate(30)
-            ->withQueryString();
+        $allowed = $request->user()->visibleDistributorIds();
+        $base = $this->customers->base($allowed, $distributorId, $search);
 
         return view('distribution::customers', [
             'period' => $period,
-            'customers' => $customers,
-            'status' => $status,
-            'statuses' => self::STATUSES,
-            'counts' => $counts,
-            'distributors' => Distributor::orderBy('name')->get(['id', 'name']),
-            'reps' => MedicalRep::where('is_active', true)->with('territory:id,name')->orderBy('name')->get(['id', 'name', 'territory_id']),
+            'customers' => $this->customers->list($base, $filter, $period),
+            'status' => $filter->value,
+            'statuses' => CustomerFilter::options(),
+            'counts' => $this->customers->counts($base, $period),
+            'distributors' => $this->distributors->visible($allowed, ['id', 'name']),
+            'reps' => $this->reps->withTerritory(activeOnly: true),
             'distributorId' => $distributorId,
             'search' => $search,
             'canAssign' => $request->user()->hasRole('accounts', 'data_entry'),
         ]);
     }
 
-    /** One rep gets 100%; two reps share 50/50 (e.g. a store covered from Mardan 1 and Mardan 2). */
-    public function assignReps(Request $request, Customer $customer): RedirectResponse
+    public function assignReps(AssignRepsRequest $request, Customer $customer, AssignCustomerReps $assign): RedirectResponse
     {
-        $data = $request->validate([
-            'rep_1' => ['nullable', 'exists:medical_reps,id'],
-            'rep_2' => ['nullable', 'exists:medical_reps,id', 'different:rep_1'],
-        ]);
+        abort_unless($request->user()->canSeeDistributor($customer->distributor_id), 403);
+        $assign->handle($customer, $request->repIds());
 
-        $reps = array_values(array_filter([$data['rep_1'] ?? null, $data['rep_2'] ?? null]));
-        $share = count($reps) === 2 ? 50 : 100;
-
-        $customer->medicalReps()->sync(collect($reps)->mapWithKeys(fn ($id) => [$id => ['share_percent' => $share]]));
-        ActivityLog::record('Assigned rep', $customer->name.': '.(MedicalRep::whereIn('id', $reps)->pluck('name')->join(' + ') ?: 'no rep').($share === 50 ? ' (50/50)' : ''));
-
-        return back()->with('status', $reps ? "{$customer->name} is now linked to its rep." : "{$customer->name} no longer has a rep.");
-    }
-
-    private function filter(Builder $query, string $status, CarbonImmutable $period): Builder
-    {
-        return match ($status) {
-            'active' => $query->whereDate('last_seen', '>=', $period),
-            'new' => $query->whereDate('first_seen', $period),
-            'needs_rep' => $query->doesntHave('medicalReps'),
-            'no_purchase' => $query->whereDate('last_seen', '<', $period)->whereDate('last_seen', '>=', $period->subMonths(2)),
-            'inactive' => $query->whereDate('last_seen', '<', $period->subMonths(2)),
-            default => $query,
-        };
+        return back()->with('status', $request->repIds() ? "{$customer->name} is now linked to its rep." : "{$customer->name} no longer has a rep.");
     }
 }

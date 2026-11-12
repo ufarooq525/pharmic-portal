@@ -2,13 +2,17 @@
 
 namespace App\Modules\Imports\Http\Requests;
 
-use Illuminate\Foundation\Http\FormRequest;
+use App\Modules\Distribution\Models\Distributor;
+use App\Support\Http\Requests\FormRequest;
+use Carbon\CarbonImmutable;
 
 class StoreImportRequest extends FormRequest
 {
+    protected array $roles = ['accounts', 'data_entry'];
+
     public function authorize(): bool
     {
-        return true; // role is checked by the route middleware
+        return parent::authorize() && $this->user()->canSeeDistributor($this->integer('distributor_id'));
     }
 
     public function rules(): array
@@ -18,5 +22,15 @@ class StoreImportRequest extends FormRequest
             'period' => ['required', 'date_format:Y-m'],
             'file' => ['required', 'file', 'mimes:pdf', 'max:10240'],
         ];
+    }
+
+    public function distributor(): Distributor
+    {
+        return Distributor::findOrFail($this->validated('distributor_id'));
+    }
+
+    public function period(): CarbonImmutable
+    {
+        return CarbonImmutable::createFromFormat('!Y-m', $this->validated('period'));
     }
 }

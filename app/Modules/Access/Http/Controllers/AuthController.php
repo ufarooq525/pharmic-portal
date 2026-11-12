@@ -2,32 +2,34 @@
 
 namespace App\Modules\Access\Http\Controllers;
 
-use App\Models\User;
+use App\Modules\Access\Http\Requests\LoginRequest;
+use App\Modules\Access\Http\Resources\UserResource;
+use App\Modules\Access\Repositories\UserRepository;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 
+/** Token sign-in for the JSON API (Sanctum). */
 class AuthController
 {
-    public function login(Request $request): JsonResponse
+    public function login(LoginRequest $request, UserRepository $users): JsonResponse
     {
-        $data = $request->validate(['email' => ['required', 'email'], 'password' => ['required', 'string']]);
-        $user = User::where('email', $data['email'])->first();
+        $user = $users->activeByEmail($request->validated('email'));
 
-        if (! $user || ! $user->is_active || ! Hash::check($data['password'], $user->password)) {
+        if (! $user || ! Hash::check($request->validated('password'), $user->password)) {
             throw ValidationException::withMessages(['email' => 'These details do not match an active user.']);
         }
 
         return response()->json([
             'token' => $user->createToken('portal')->plainTextToken,
-            'user' => $this->present($user),
+            'user' => new UserResource($user),
         ]);
     }
 
-    public function me(Request $request): JsonResponse
+    public function me(Request $request): UserResource
     {
-        return response()->json(['user' => $this->present($request->user())]);
+        return new UserResource($request->user());
     }
 
     public function logout(Request $request): JsonResponse
@@ -35,10 +37,5 @@ class AuthController
         $request->user()->currentAccessToken()->delete();
 
         return response()->json(status: 204);
-    }
-
-    private function present(User $user): array
-    {
-        return ['id' => $user->id, 'name' => $user->name, 'email' => $user->email, 'role' => $user->role->value, 'role_label' => $user->role->label()];
     }
 }

@@ -2,70 +2,57 @@
 
 namespace App\Modules\Sales\Http\Controllers\Web;
 
-use App\Modules\Catalog\Models\Product;
-use App\Modules\Distribution\Models\Distributor;
-use App\Modules\Distribution\Models\MedicalRep;
-use App\Modules\Sales\Services\ReportBuilder;
-use App\Support\Period;
-use Illuminate\Http\Request;
+use App\Modules\Catalog\Repositories\ProductRepository;
+use App\Modules\Distribution\Repositories\DistributorRepository;
+use App\Modules\Distribution\Repositories\MedicalRepRepository;
+use App\Modules\Sales\Enums\ReportType;
+use App\Modules\Sales\Http\Requests\ReportRequest;
+use App\Modules\Sales\Repositories\ReportRepository;
+use App\Support\Http\CsvDownload;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ReportController
 {
-    public const TYPES = ['sales', 'customers', 'bonus', 'incentive', 'taxes'];
+    private const PER_PAGE = 50;
 
-    public function show(Request $request, ReportBuilder $builder, string $type = 'sales'): View
+    public function __construct(private readonly ReportRepository $reports) {}
+
+    public function show(ReportRequest $request, DistributorRepository $distributors, ProductRepository $products, MedicalRepRepository $reps, string $type = 'sales'): View
     {
-        $period = Period::fromRequest($request);
-        $filters = $this->filters($request);
+        $report = ReportType::tryFrom($type) ?? abort(404);
+        $period = $request->period();
+        $data = $this->reports->build($report, $period, $request->filters());
 
-        $report = $builder->build($type, $period, $filters);
         // Totals cover every row; the screen shows 50 rows a page. The CSV export has them all.
         $page = LengthAwarePaginator::resolveCurrentPage();
-        $report['rows'] = new LengthAwarePaginator(array_slice($report['rows'], ($page - 1) * 50, 50), count($report['rows']), 50, $page, [
+        $data['rows'] = new LengthAwarePaginator(array_slice($data['rows'], ($page - 1) * self::PER_PAGE, self::PER_PAGE), count($data['rows']), self::PER_PAGE, $page, [
             'path' => $request->url(), 'query' => $request->query(),
         ]);
 
-        return view('sales::report', $report + [
-            'type' => $type,
-            'titles' => ReportBuilder::TITLES,
+        return view('sales::report', $data + [
+            'type' => $report->value,
+            'titles' => ReportType::options(),
             'period' => $period,
-            'filters' => $filters,
-            'distributors' => Distributor::orderBy('name')->get(['id', 'name']),
-            'products' => Product::orderBy('name')->get(['id', 'name']),
-            'reps' => MedicalRep::orderBy('name')->get(['id', 'name']),
+            'filters' => $request->filters(),
+            'distributors' => $distributors->visible($request->user()->visibleDistributorIds(), ['id', 'name']),
+            'products' => $products->all(['id', 'name'], orderBy: 'name'),
+            'reps' => $reps->all(['id', 'name'], orderBy: 'name'),
         ]);
     }
 
-    /** Same report as a CSV that opens straight in Excel (UTF-8 with BOM). */
-    public function export(Request $request, ReportBuilder $builder, string $type): StreamedResponse
+    /** Same report as a CSV that opens straight in Excel. */
+    public function export(ReportRequest $request, string $type): StreamedResponse
     {
-        $period = Period::fromRequest($request);
-        $report = $builder->build($type, $period, $this->filters($request));
-        $file = "pharmic-{$type}-{$period->format('Y-m')}.csv";
+        $report = ReportType::tryFrom($type) ?? abort(404);
+        $period = $request->period();
+        $data = $this->reports->build($report, $period, $request->filters());
+        $keys = array_keys($data['columns']);
 
-        return response()->streamDownload(function () use ($report) {
-            $out = fopen('php://output', 'w');
-            fwrite($out, "\xEF\xBB\xBF");
-            fputcsv($out, array_column($report['columns'], 0));
+        $rows = array_map(fn ($row) => array_map(fn ($key) => $row[$key] ?? '', $keys), $data['rows']);
+        $rows[] = array_map(fn ($key) => $key === $keys[0] ? 'Total' : ($data['totals'][$key] ?? ''), $keys);
 
-            foreach ($report['rows'] as $row) {
-                fputcsv($out, array_map(fn ($key) => $row[$key] ?? '', array_keys($report['columns'])));
-            }
-
-            fputcsv($out, array_map(fn ($key) => $key === array_key_first($report['columns']) ? 'Total' : ($report['totals'][$key] ?? ''), array_keys($report['columns'])));
-            fclose($out);
-        }, $file, ['Content-Type' => 'text/csv; charset=UTF-8']);
-    }
-
-    private function filters(Request $request): array
-    {
-        return [
-            'distributor' => $request->integer('distributor') ?: null,
-            'product' => $request->integer('product') ?: null,
-            'rep' => $request->integer('rep') ?: null,
-        ];
+        return CsvDownload::make("pharmic-{$report->value}-{$period->format('Y-m')}.csv", array_column($data['columns'], 0), $rows);
     }
 }

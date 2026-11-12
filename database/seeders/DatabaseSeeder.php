@@ -2,6 +2,8 @@
 
 namespace Database\Seeders;
 
+use App\Modules\Distribution\Enums\BonusSource;
+use App\Modules\Sales\Enums\StockMovementType;
 use App\Models\User;
 use App\Modules\Catalog\Models\Product;
 use App\Modules\Distribution\Models\Distributor;
@@ -42,7 +44,7 @@ class DatabaseSeeder extends Seeder
                 'exfp_price' => $exfp, 'trade_price' => $tp, 'cost_price' => $cost, 'sales_tax_rate' => $st,
                 'withholding_tax_rate' => $wht, 'incentive_rate' => $incentive, 'bonus_buy' => $buy, 'bonus_free' => $free,
             ]);
-            StockMovement::firstOrCreate(['product_id' => $product->id, 'type' => StockMovement::OPENING], ['units' => $opening, 'moved_on' => '2026-10-01', 'note' => 'Opening stock from the Excel sheet']);
+            StockMovement::firstOrCreate(['product_id' => $product->id, 'type' => StockMovementType::Opening], ['units' => $opening, 'moved_on' => '2026-10-01', 'note' => 'Opening stock from the Excel sheet']);
         }
 
         // Each distributor's file profile, read from its October 2026 PDF (December 2025 for Saaj).
@@ -55,7 +57,7 @@ class DatabaseSeeder extends Seeder
             ['Friends Enterprises', 'Buner', 'monthly', 'FRIENDS ENTERPRISES', 'Customer annual sales with Jan–Dec columns, T.P and amount. No bonus column. Export one month only (from and to dates in the same month).'],
             ['Umer Enterprises', 'Timergara', null, null, null],
         ] as [$name, $city, $layout, $header, $notes]) {
-            Distributor::updateOrCreate(['name' => $name], ['city' => $city, 'layout' => $layout, 'header_name' => $header, 'bonus_source' => Distributor::BONUS_FILE, 'format_notes' => $notes]);
+            Distributor::updateOrCreate(['name' => $name], ['city' => $city, 'layout' => $layout, 'header_name' => $header, 'bonus_source' => BonusSource::File, 'format_notes' => $notes]);
         }
 
         foreach ([

@@ -2,83 +2,73 @@
 
 namespace App\Modules\Ledger\Http\Controllers\Web;
 
-use App\Modules\Access\Models\ActivityLog;
 use App\Modules\Distribution\Models\Distributor;
+use App\Modules\Distribution\Repositories\DistributorRepository;
+use App\Modules\Ledger\Actions\RecordPayment;
+use App\Modules\Ledger\Actions\RemovePayment;
+use App\Modules\Ledger\Http\Requests\StorePaymentRequest;
 use App\Modules\Ledger\Models\Payment;
-use App\Modules\Ledger\Services\LedgerBuilder;
+use App\Modules\Ledger\Repositories\LedgerRepository;
+use App\Support\Http\CsvDownload;
 use App\Support\Period;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
-/** Distributor ledgers: confirmed sales (debit) against payments received (credit). */
+/** Distributor ledgers: confirmed monthly invoices (debit) against payments received (credit). */
 class LedgerPageController
 {
-    public function index(Request $request, LedgerBuilder $ledger): View
+    public function __construct(private readonly LedgerRepository $ledger) {}
+
+    public function index(Request $request, DistributorRepository $distributors): View
     {
         $allowed = $request->user()->visibleDistributorIds();
-        $distributors = Distributor::orderBy('name')->when($allowed, fn ($q, $ids) => $q->whereIn('id', $ids))->get();
-        $current = $distributors->firstWhere('id', $request->integer('distributor')) ?? $distributors->first();
-        $year = $this->year($request);
-
+        $list = $distributors->visible($allowed);
+        $current = $list->firstWhere('id', $request->integer('distributor')) ?? $list->first();
         $period = Period::fromRequest($request);
+        $year = $this->year($request);
 
         return view('ledger::index', [
             'period' => $period,
-            'month' => array_values(array_filter($ledger->month($period), fn ($r) => $allowed === null || in_array($r['distributor']->id, $allowed, true))),
-            'distributors' => $distributors,
-            'balances' => $ledger->balances(),
+            'month' => $this->ledger->month($period, $allowed),
+            'distributors' => $list,
+            'balances' => $this->ledger->balances(),
             'current' => $current,
             'year' => $year,
-            'statement' => $current ? $ledger->statement($current, $year) : null,
+            'statement' => $current ? $this->ledger->statement($current, $year) : null,
             'canRecord' => $request->user()->hasRole('accounts'),
             'canRemove' => $request->user()->hasRole('owner'),
         ]);
     }
 
-    public function store(Request $request, Distributor $distributor): RedirectResponse
+    public function store(StorePaymentRequest $request, Distributor $distributor, RecordPayment $record): RedirectResponse
     {
-        $data = $request->validate([
-            'paid_on' => ['required', 'date', 'before_or_equal:today'],
-            'amount' => ['required', 'numeric', 'gt:0', 'max:999999999'],
-            'method' => ['required', Rule::in(array_keys(Payment::METHODS))],
-            'reference' => ['nullable', 'string', 'max:100'],
-            'note' => ['nullable', 'string', 'max:255'],
-        ]);
+        $payment = $record->handle($distributor, $request->validated(), $request->user());
 
-        $distributor->payments()->create($data + ['recorded_by' => $request->user()->id]);
-        ActivityLog::record('Recorded payment', "{$distributor->name}: ".fmt_rs((float) $data['amount'])." on {$data['paid_on']} by {$data['method']}".(empty($data['reference']) ? '' : ", ref {$data['reference']}"));
-
-        return back()->with('status', 'Payment of '.fmt_rs((float) $data['amount'])." from {$distributor->name} is recorded.");
+        return back()->with('status', 'Payment of '.fmt_rs($payment->amount)." from {$distributor->name} is recorded.");
     }
 
-    public function destroy(Payment $payment): RedirectResponse
+    public function destroy(Payment $payment, RemovePayment $remove): RedirectResponse
     {
-        $payment->delete();
-        ActivityLog::record('Removed payment', $payment->distributor->name.': '.fmt_rs($payment->amount).' of '.$payment->paid_on->format('j M Y'));
+        $remove->handle($payment);
 
         return back()->with('status', 'Payment of '.fmt_rs($payment->amount).' removed from the ledger.');
     }
 
-    public function export(Request $request, Distributor $distributor, LedgerBuilder $ledger): StreamedResponse
+    public function export(Request $request, Distributor $distributor): StreamedResponse
     {
         abort_unless($request->user()->canSeeDistributor($distributor->id), 403);
         $year = $this->year($request);
-        $s = $ledger->statement($distributor, $year);
+        $s = $this->ledger->statement($distributor, $year);
 
-        return response()->streamDownload(function () use ($s) {
-            $out = fopen('php://output', 'w');
-            fwrite($out, "\xEF\xBB\xBF");
-            fputcsv($out, ['Date', 'Entry', 'Detail', 'Debit (sales)', 'Credit (payments)', 'Balance']);
-            fputcsv($out, ['', 'Opening balance', '', '', '', $s['opening']]);
-            foreach ($s['rows'] as $r) {
-                fputcsv($out, [$r['date']->format('Y-m-d'), $r['what'], $r['detail'], $r['debit'] ?: '', $r['credit'] ?: '', $r['balance']]);
-            }
-            fputcsv($out, ['', 'Closing balance', '', $s['debit'], $s['credit'], $s['closing']]);
-            fclose($out);
-        }, str($distributor->name)->slug()."-ledger-{$year}.csv", ['Content-Type' => 'text/csv; charset=UTF-8']);
+        $rows = array_merge(
+            [['', 'Opening balance', '', '', '', $s['opening']]],
+            array_map(fn ($r) => [$r['date']->format('Y-m-d'), $r['what'], $r['detail'], $r['debit'] ?: '', $r['credit'] ?: '', $r['balance']], $s['rows']),
+            [['', 'Closing balance', '', $s['debit'], $s['credit'], $s['closing']]],
+        );
+
+        return CsvDownload::make(str($distributor->name)->slug()."-ledger-{$year}.csv", ['Date', 'Entry', 'Detail', 'Debit (invoices)', 'Credit (payments)', 'Balance'], $rows);
     }
 
     private function year(Request $request): int

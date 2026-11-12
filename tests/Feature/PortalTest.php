@@ -2,14 +2,16 @@
 
 namespace Tests\Feature;
 
+use App\Modules\Distribution\Enums\BonusSource;
+use App\Modules\Imports\Enums\ImportStatus;
 use App\Models\User;
 use App\Modules\Catalog\Models\Product;
 use App\Modules\Distribution\Models\Customer;
 use App\Modules\Distribution\Models\Distributor;
 use App\Modules\Distribution\Models\MedicalRep;
 use App\Modules\Imports\Models\Import;
-use App\Modules\Imports\Services\ConfirmImport;
-use App\Modules\Ledger\Services\LedgerBuilder;
+use App\Modules\Imports\Actions\ConfirmImport;
+use App\Modules\Ledger\Repositories\LedgerRepository;
 use App\Modules\Sales\Models\SaleLine;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -32,7 +34,7 @@ class PortalTest extends TestCase
         $gyn = Product::where('code', 'GYN')->value('id');
 
         $import = Import::create([
-            'distributor_id' => $irfan->id, 'period' => '2026-10-01', 'status' => Import::NEEDS_REVIEW, 'layout' => 'lineitem',
+            'distributor_id' => $irfan->id, 'period' => '2026-10-01', 'status' => ImportStatus::NeedsReview, 'layout' => 'lineitem',
             'original_name' => 'LH COSTUMER.PDF', 'file_path' => 'imports/2026-10/test.pdf', 'distributor_in_file' => 'IRFAN ENTERPRISES Timergarah',
             'period_from' => '2026-10-01', 'period_to' => '2026-10-31', 'file_units' => 8, 'file_value' => 3336, 'parsed_units' => 8, 'parsed_value' => 3336,
             'checks' => [['key' => 'totals', 'ok' => true, 'message' => 'Units and value match the grand total printed in the file.']],
@@ -84,7 +86,7 @@ class PortalTest extends TestCase
         $import = $this->import();
         app(ConfirmImport::class)->handle($import, $this->owner());
 
-        $this->assertSame(Import::CONFIRMED, $import->fresh()->status);
+        $this->assertSame(ImportStatus::Confirmed, $import->fresh()->status);
         $this->assertSame(1, Customer::count());
         $this->assertSame(2, SaleLine::count());
 
@@ -148,7 +150,7 @@ class PortalTest extends TestCase
         $this->actingAs(User::factory()->role('accounts')->create())->get('/users')->assertForbidden();
 
         $this->actingAs(User::factory()->role('accounts')->create())->post("/imports/{$import->id}/confirm")->assertRedirect();
-        $this->assertSame(Import::CONFIRMED, $import->fresh()->status);
+        $this->assertSame(ImportStatus::Confirmed, $import->fresh()->status);
     }
 
     public function test_two_reps_share_a_customer_fifty_fifty(): void
@@ -165,7 +167,7 @@ class PortalTest extends TestCase
     public function test_bonus_follows_each_distributors_setting(): void
     {
         $irfan = Distributor::where('name', 'Irfan Enterprises')->firstOrFail();
-        $irfan->update(['bonus_source' => Distributor::BONUS_SCHEME]);
+        $irfan->update(['bonus_source' => BonusSource::Scheme]);
         $scheme = Product::where('code', 'GYN')->firstOrFail()->rateOn(now()->setDate(2026, 10, 31))->schemeBonus(10);
 
         app(ConfirmImport::class)->handle($this->import(), $this->owner());
@@ -174,9 +176,9 @@ class PortalTest extends TestCase
         $this->assertEqualsWithDelta($scheme, (float) $sale->bonus_units, 0.01);
         $this->assertFalse((bool) $sale->bonus_from_file);
 
-        $this->assertSame(2.0, (new Distributor(['bonus_source' => Distributor::BONUS_FILE]))->bonusFor(2.0, 5));
-        $this->assertSame(5.0, (new Distributor(['bonus_source' => Distributor::BONUS_FILE]))->bonusFor(null, 5));
-        $this->assertSame(0.0, (new Distributor(['bonus_source' => Distributor::BONUS_NONE]))->bonusFor(null, 5));
+        $this->assertSame(2.0, (new Distributor(['bonus_source' => BonusSource::File]))->bonusFor(2.0, 5));
+        $this->assertSame(5.0, (new Distributor(['bonus_source' => BonusSource::File]))->bonusFor(null, 5));
+        $this->assertSame(0.0, (new Distributor(['bonus_source' => BonusSource::None]))->bonusFor(null, 5));
     }
 
     public function test_the_header_check_uses_the_saved_name_and_the_first_file_saves_the_format(): void
@@ -189,7 +191,7 @@ class PortalTest extends TestCase
         app(ConfirmImport::class)->handle($this->import(), $this->owner());
 
         $irfan->refresh();
-        $this->assertSame('lineitem', $irfan->layout);
+        $this->assertSame(\App\Modules\Imports\Enums\ReportLayout::LineItem, $irfan->layout);
         $this->assertSame('IRFAN ENTERPRISES Timergarah', $irfan->header_name);
     }
 
@@ -213,7 +215,7 @@ class PortalTest extends TestCase
         $this->actingAs(User::factory()->role('accounts')->create())->put("/distributors/{$irfan->id}", $profile)->assertForbidden();
         $this->actingAs($this->owner())->put("/distributors/{$irfan->id}", $profile)->assertSessionHasNoErrors();
 
-        $this->assertSame('none', $irfan->fresh()->bonus_source);
+        $this->assertSame(\App\Modules\Distribution\Enums\BonusSource::None, $irfan->fresh()->bonus_source);
     }
 
     public function test_the_ledger_debits_confirmed_sales_and_credits_payments(): void
@@ -227,14 +229,14 @@ class PortalTest extends TestCase
             ->post("/ledger/{$irfan->id}/payments", ['paid_on' => '2026-11-05', 'amount' => 1000, 'method' => 'bank', 'reference' => 'TRX-1'])
             ->assertSessionHasNoErrors();
 
-        $statement = app(LedgerBuilder::class)->statement($irfan->fresh(), 2026);
+        $statement = app(LedgerRepository::class)->statement($irfan->fresh(), 2026);
         $this->assertEqualsWithDelta($sales, $statement['debit'], 0.01);
         $this->assertEqualsWithDelta(1000, $statement['credit'], 0.01);
         $this->assertEqualsWithDelta($irfan->opening_balance + $sales - 1000, $statement['closing'], 0.01);
 
         // Undoing the import takes its sales back out of the ledger.
-        app(ConfirmImport::class)->reverse($import->fresh());
-        $this->assertEqualsWithDelta(0, app(LedgerBuilder::class)->statement($irfan->fresh(), 2026)['debit'], 0.01);
+        app(\App\Modules\Imports\Actions\RevertImport::class)->handle($import->fresh());
+        $this->assertEqualsWithDelta(0, app(LedgerRepository::class)->statement($irfan->fresh(), 2026)['debit'], 0.01);
 
         $this->actingAs(User::factory()->role('viewer')->create())->post("/ledger/{$irfan->id}/payments", [])->assertForbidden();
     }
@@ -242,7 +244,7 @@ class PortalTest extends TestCase
     public function test_a_wrong_file_shows_a_warning_and_can_be_discarded(): void
     {
         $import = $this->import();
-        $import->update(['status' => Import::BLOCKED, 'checks' => [['key' => 'distributor', 'ok' => false, 'message' => 'The file header reads “HAMDAN ENTERPRISES”, not Irfan Enterprises.']]]);
+        $import->update(['status' => ImportStatus::Blocked, 'checks' => [['key' => 'distributor', 'ok' => false, 'message' => 'The file header reads “HAMDAN ENTERPRISES”, not Irfan Enterprises.']]]);
         $this->actingAs($this->owner());
 
         $this->get("/imports/{$import->id}")->assertOk()->assertSee('This looks like the wrong file')->assertSee('HAMDAN ENTERPRISES');
@@ -271,7 +273,7 @@ class PortalTest extends TestCase
         $this->assertEqualsWithDelta(3294 + 500, (float) \App\Modules\Sales\Models\StockMovement::where('product_id', $gyn->id)->sum('units'), 0.01);
 
         $this->post("/inventory/receipts/{$receipt->id}/revert")->assertSessionHasNoErrors();
-        $this->assertSame('reverted', $receipt->fresh()->status);
+        $this->assertSame(\App\Modules\Sales\Enums\StockReceiptStatus::Reverted, $receipt->fresh()->status);
         $this->assertEqualsWithDelta(3294, (float) \App\Modules\Sales\Models\StockMovement::where('product_id', $gyn->id)->sum('units'), 0.01);
         $this->assertDatabaseHas('activity_logs', ['action' => 'Reverted stock receipt']);
 
@@ -304,7 +306,7 @@ class PortalTest extends TestCase
         $this->get("/invoices/{$invoice->id}/print")->assertOk()->assertSee('INV-2610-0001');
 
         $this->post("/invoices/{$invoice->id}/cancel", ['reason' => 'Wrong month'])->assertSessionHasNoErrors();
-        $this->assertSame('cancelled', $invoice->fresh()->status);
+        $this->assertSame(\App\Modules\Billing\Enums\InvoiceStatus::Cancelled, $invoice->fresh()->status);
         $this->assertDatabaseHas('invoices', ['number' => 'CN-2610-0001', 'total' => -1 * round($invoice->total, 2)]);
     }
 
@@ -359,7 +361,7 @@ class PortalTest extends TestCase
 
         $this->actingAs($this->owner())->post("/imports/{$import->id}/reverse")->assertRedirect(route('imports.show', $import));
 
-        $this->assertSame(Import::NEEDS_REVIEW, $import->fresh()->status);
+        $this->assertSame(ImportStatus::NeedsReview, $import->fresh()->status);
         $this->assertSame(0, Customer::count());
         $this->actingAs(User::factory()->role('accounts')->create())->post("/imports/{$import->id}/confirm")->assertRedirect();
         $this->assertSame(2, SaleLine::count());

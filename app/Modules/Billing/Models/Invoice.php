@@ -2,6 +2,8 @@
 
 namespace App\Modules\Billing\Models;
 
+use App\Modules\Billing\Enums\InvoiceKind;
+use App\Modules\Billing\Enums\InvoiceStatus;
 use App\Models\User;
 use App\Modules\Distribution\Models\Customer;
 use App\Modules\Distribution\Models\Distributor;
@@ -12,20 +14,12 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Invoice extends Model
 {
-    public const INVOICE = 'invoice';
-
-    public const CREDIT_NOTE = 'credit_note';
-
-    public const ISSUED = 'issued';
-
-    public const CANCELLED = 'cancelled';
-
     protected $guarded = ['id'];
 
     protected function casts(): array
     {
         return [
-            'period' => 'date', 'issued_at' => 'datetime', 'cancelled_at' => 'datetime',
+            'kind' => InvoiceKind::class, 'status' => InvoiceStatus::class, 'period' => 'date', 'issued_at' => 'datetime', 'cancelled_at' => 'datetime',
             'units' => 'float', 'bonus' => 'float', 'value' => 'float', 'sales_tax' => 'float', 'withholding_tax' => 'float', 'total' => 'float',
         ];
     }
@@ -62,7 +56,7 @@ class Invoice extends Model
 
     public function isCreditNote(): bool
     {
-        return $this->kind === self::CREDIT_NOTE;
+        return $this->kind === InvoiceKind::CreditNote;
     }
 
     public function billTo(): string

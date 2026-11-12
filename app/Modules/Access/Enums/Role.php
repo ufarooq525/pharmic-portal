@@ -2,8 +2,12 @@
 
 namespace App\Modules\Access\Enums;
 
+use App\Support\Enums\HasOptions;
+
 enum Role: string
 {
+    use HasOptions;
+
     case Owner = 'owner';
     case Accounts = 'accounts';
     case DataEntry = 'data_entry';

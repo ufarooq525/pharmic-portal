@@ -1,7 +1,7 @@
 @php
     $q = ['period' => $period->format('Y-m')];
     $billTo = $customer ? $customer->name.($customer->area ? ', '.$customer->area : '') : ($distributor ? $distributor->name.', '.$distributor->city : null);
-    $kinds = ['invoice' => 'Invoice', 'credit_note' => 'Credit note'];
+    $cancelled = \App\Modules\Billing\Enums\InvoiceStatus::Cancelled;
 @endphp
 <x-layouts.app title="Invoices" description="Invoices for a distributor or a single customer from confirmed sales, with sales tax and withholding tax.">
     <x-page-header title="Invoices" sub="Pick a distributor or any single customer. Lines, bonus, sales tax and withholding tax fill in from confirmed sales." />
@@ -35,7 +35,7 @@
         <section class="card gap-5" aria-labelledby="doc-h">
             <div class="flex flex-wrap items-start justify-between gap-4">
                 <div class="flex flex-col gap-1">
-                    <span class="label">{{ $issued ? ($issued->status === 'cancelled' ? 'Cancelled invoice' : 'Invoice') : 'Draft, not issued yet' }}</span>
+                    <span class="label">{{ $issued ? ($issued->status === $cancelled ? 'Cancelled invoice' : 'Invoice') : 'Draft, not issued yet' }}</span>
                     <h2 id="doc-h" class="m-0 text-[24px] font-extrabold tracking-[-0.02em]">{{ $issued?->number ?? 'INV-'.$period->format('ym').'-····' }}</h2>
                     <span class="text-muted">{{ config('pharmic.company') }}{{ config('pharmic.ntn') ? ' · NTN '.config('pharmic.ntn') : '' }}{{ config('pharmic.strn') ? ' · STRN '.config('pharmic.strn') : '' }}</span>
                 </div>
@@ -68,7 +68,7 @@
                     @if ($issued)
                         <a href="{{ route('invoices.print', $issued) }}" target="_blank" rel="noopener" class="btn btn-primary">Print / save as PDF</a>
                         <a href="{{ whatsapp_url($customer ? null : $distributor->phone, config('pharmic.company')." invoice {$issued->number}\nBill to: {$billTo}\nPeriod: ".$period->format('F Y')."\nUnits ".fmt_num($issued->units).' + bonus '.fmt_num($issued->bonus)."\nTotal: ".fmt_rs($issued->total)) }}" target="_blank" rel="noopener" class="btn">Share on WhatsApp</a>
-                        @if ($canCancel && $issued->status === 'issued')
+                        @if ($canCancel && $issued->status === \App\Modules\Billing\Enums\InvoiceStatus::Issued)
                             <details class="w-full">
                                 <summary class="btn btn-sm cursor-pointer">Cancel with a credit note</summary>
                                 <form method="post" action="{{ route('invoices.cancel', $issued) }}" class="mt-3 flex flex-wrap items-end gap-2" data-confirm="Cancel {{ $issued->number }}? A credit note will reverse it in full.">
@@ -102,10 +102,10 @@
                     @foreach ($month as $inv)
                         <tr>
                             <td class="num font-semibold">{{ $inv->number }}</td>
-                            <td>{{ $kinds[$inv->kind] }}</td>
+                            <td>{{ $inv->kind->label() }}</td>
                             <td>{{ $inv->billTo() }}</td>
                             <td class="r">{{ fmt_num($inv->total) }}</td>
-                            <td><x-chip :tone="$inv->status === 'cancelled' ? 'mute' : ($inv->kind === 'credit_note' ? 'info' : 'ok')">{{ $inv->status === 'cancelled' ? 'Cancelled' : 'Issued' }}</x-chip></td>
+                            <td><x-chip :tone="$inv->status === $cancelled ? 'mute' : $inv->kind->tone()">{{ $inv->status->label() }}</x-chip></td>
                             <td class="text-right"><a href="{{ route('invoices.print', $inv) }}" target="_blank" rel="noopener" class="btn btn-sm">Open</a></td>
                         </tr>
                     @endforeach

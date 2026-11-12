@@ -2,6 +2,8 @@
 
 namespace App\Modules\Distribution\Models;
 
+use App\Modules\Distribution\Enums\BonusSource;
+use App\Modules\Imports\Enums\ReportLayout;
 use App\Modules\Imports\Models\Import;
 use App\Modules\Ledger\Models\Payment;
 use Illuminate\Database\Eloquent\Model;
@@ -15,27 +17,11 @@ use Illuminate\Support\Str;
  */
 class Distributor extends Model
 {
-    public const LAYOUTS = [
-        'matrix' => 'Product grid (SoftTouch "Customer wise sales report")',
-        'lineitem' => 'Item lines with bonus (SoftTouch "Sale Report")',
-        'monthly' => 'Jan–Dec columns (customer annual sales)',
-    ];
-
-    public const BONUS_FILE = 'file';
-    public const BONUS_SCHEME = 'scheme';
-    public const BONUS_NONE = 'none';
-
-    public const BONUS_SOURCES = [
-        self::BONUS_FILE => 'Use the bonus printed in the file; the product scheme where none is printed',
-        self::BONUS_SCHEME => 'Always use the product scheme, ignore the file',
-        self::BONUS_NONE => 'Only the bonus printed in the file; no scheme bonus',
-    ];
-
     protected $guarded = ['id'];
 
     protected function casts(): array
     {
-        return ['opening_balance' => 'float'];
+        return ['opening_balance' => 'float', 'layout' => ReportLayout::class, 'bonus_source' => BonusSource::class];
     }
 
     public function customers(): HasMany
@@ -62,8 +48,8 @@ class Distributor extends Model
     public function bonusFor(?float $inFile, float $scheme): float
     {
         return match ($this->bonus_source) {
-            self::BONUS_SCHEME => $scheme,
-            self::BONUS_NONE => $inFile ?? 0.0,
+            BonusSource::Scheme => $scheme,
+            BonusSource::None => $inFile ?? 0.0,
             default => $inFile ?? $scheme,
         };
     }
@@ -71,7 +57,7 @@ class Distributor extends Model
     /** True when the bonus posted for a line is the one printed in the file. */
     public function bonusIsFromFile(?float $inFile): bool
     {
-        return $inFile !== null && $this->bonus_source !== self::BONUS_SCHEME;
+        return $inFile !== null && $this->bonus_source !== BonusSource::Scheme;
     }
 
     /** Does the name printed at the top of a file belong to this distributor? */

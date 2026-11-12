@@ -2,6 +2,7 @@
 
 namespace App\Modules\Sales\Models;
 
+use App\Modules\Sales\Enums\StockReceiptStatus;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -9,15 +10,11 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class StockReceipt extends Model
 {
-    public const POSTED = 'posted';
-
-    public const REVERTED = 'reverted';
-
     protected $guarded = ['id'];
 
     protected function casts(): array
     {
-        return ['received_on' => 'date', 'reverted_at' => 'datetime', 'total_units' => 'float'];
+        return ['received_on' => 'date', 'reverted_at' => 'datetime', 'total_units' => 'float', 'status' => StockReceiptStatus::class];
     }
 
     public function movements(): HasMany
@@ -37,6 +34,6 @@ class StockReceipt extends Model
 
     public function isPosted(): bool
     {
-        return $this->status === self::POSTED;
+        return $this->status === StockReceiptStatus::Posted;
     }
 }

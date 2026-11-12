@@ -2,38 +2,30 @@
 
 namespace App\Modules\Distribution\Http\Controllers;
 
+use App\Modules\Distribution\Http\Requests\AssignRepsApiRequest;
+use App\Modules\Distribution\Http\Resources\CustomerResource;
 use App\Modules\Distribution\Models\Customer;
-use Illuminate\Http\JsonResponse;
+use App\Modules\Distribution\Repositories\CustomerRepository;
 use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 class CustomerController
 {
-    public function index(Request $request): JsonResponse
+    public function index(Request $request, CustomerRepository $customers): AnonymousResourceCollection
     {
-        $customers = Customer::query()
-            ->with(['distributor:id,name', 'medicalReps:id,name'])
-            ->when($request->integer('distributor_id'), fn ($q, $id) => $q->where('distributor_id', $id))
+        $list = $customers->base($request->user()->visibleDistributorIds(), $request->integer('distributor_id') ?: null, $request->string('search')->trim()->toString())
+            ->with(['distributor', 'medicalReps:id,name'])
             ->when($request->boolean('without_rep'), fn ($q) => $q->doesntHave('medicalReps'))
-            ->when($request->string('search')->toString(), fn ($q, $s) => $q->where('name', 'like', "%{$s}%"))
-            ->orderBy('name')
-            ->paginate(50);
+            ->orderBy('name')->paginate(50)->withQueryString();
 
-        return response()->json($customers);
+        return CustomerResource::collection($list);
     }
 
-    /** Replace the customer's reps. Shares must add up to 100. */
-    public function assignReps(Request $request, Customer $customer): JsonResponse
+    /** Replace the customer's reps; shares must add up to 100. */
+    public function assignReps(AssignRepsApiRequest $request, Customer $customer): CustomerResource
     {
-        $data = $request->validate([
-            'reps' => ['required', 'array', 'min:1', 'max:2'],
-            'reps.*.medical_rep_id' => ['required', 'distinct', 'exists:medical_reps,id'],
-            'reps.*.share_percent' => ['required', 'integer', 'between:1,100'],
-        ]);
+        $customer->medicalReps()->sync(collect($request->validated('reps'))->mapWithKeys(fn ($r) => [$r['medical_rep_id'] => ['share_percent' => $r['share_percent']]]));
 
-        abort_unless(array_sum(array_column($data['reps'], 'share_percent')) === 100, 422, 'Shares must add up to 100%.');
-
-        $customer->medicalReps()->sync(collect($data['reps'])->mapWithKeys(fn ($r) => [$r['medical_rep_id'] => ['share_percent' => $r['share_percent']]]));
-
-        return response()->json(['data' => $customer->load('medicalReps:id,name')]);
+        return new CustomerResource($customer->load('medicalReps:id,name'));
     }
 }

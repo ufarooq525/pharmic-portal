@@ -2,83 +2,74 @@
 
 namespace App\Modules\Billing\Http\Controllers\Web;
 
-use App\Modules\Access\Models\ActivityLog;
+use App\Modules\Billing\Actions\CancelInvoice;
+use App\Modules\Billing\Actions\IssueInvoice;
+use App\Modules\Billing\Http\Requests\CancelInvoiceRequest;
+use App\Modules\Billing\Http\Requests\IssueInvoiceRequest;
 use App\Modules\Billing\Models\Invoice;
-use App\Modules\Billing\Services\InvoiceService;
+use App\Modules\Billing\Repositories\InvoiceRepository;
 use App\Modules\Distribution\Models\Customer;
-use App\Modules\Distribution\Models\Distributor;
+use App\Modules\Distribution\Repositories\CustomerRepository;
+use App\Modules\Distribution\Repositories\DistributorRepository;
 use App\Support\Period;
-use Carbon\CarbonImmutable;
 use DomainException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
 class InvoiceController
 {
-    public function index(Request $request, InvoiceService $invoices): View
+    public function __construct(
+        private readonly InvoiceRepository $invoices,
+        private readonly DistributorRepository $distributors,
+        private readonly CustomerRepository $customers,
+    ) {}
+
+    public function index(Request $request): View
     {
         $period = Period::fromRequest($request);
         $allowed = $request->user()->visibleDistributorIds();
-        $distributors = Distributor::orderBy('name')->when($allowed !== null, fn ($q) => $q->whereIn('id', $allowed))->get();
-
-        // Customers who bought this month, grouped by distributor, for the "Bill to" picker.
-        $customerIds = DB::table('sale_lines')->whereBetween('period', [Period::start($period), Period::end($period)])->distinct()->pluck('customer_id');
-        $customers = Customer::whereIn('id', $customerIds)->whereIn('distributor_id', $distributors->pluck('id'))->orderBy('name')->get()->groupBy('distributor_id');
-
+        $distributors = $this->distributors->visible($allowed);
         [$distributor, $customer] = $this->billTo((string) $request->query('to'), $distributors);
-        $issued = $distributor ? $invoices->issued($distributor, $customer, $period) : null;
-        $lines = $issued ? $issued->lines->map->toArray()->all() : ($distributor ? $invoices->lines($distributor, $customer, $period) : []);
+        $issued = $distributor ? $this->invoices->issuedFor($distributor, $customer, $period)?->load(['issuedBy:id,name', 'creditNote']) : null;
+        $lines = $issued ? $issued->lines->map->toArray()->all() : ($distributor ? $this->invoices->lines($distributor, $customer, $period) : []);
 
         return view('billing::index', [
             'period' => $period,
             'distributors' => $distributors,
-            'customers' => $customers,
+            'customers' => $this->customers->boughtIn($period, $distributors->pluck('id')->all())->groupBy('distributor_id'),
             'to' => (string) $request->query('to'),
             'distributor' => $distributor,
             'customer' => $customer,
-            'issued' => $issued?->load(['issuedBy:id,name', 'creditNote']),
+            'issued' => $issued,
             'lines' => $lines,
-            'totals' => $issued ? $issued->only(['units', 'bonus', 'value', 'sales_tax', 'withholding_tax', 'total']) : $invoices->totals($lines),
-            'month' => Invoice::with(['distributor:id,name,city', 'customer:id,name,area'])
-                ->whereBetween('period', [Period::start($period), Period::end($period)])
-                ->when($allowed !== null, fn ($q) => $q->whereIn('distributor_id', $allowed))
-                ->orderBy('number')->paginate(25)->withQueryString()->fragment('issued'),
+            'totals' => $issued ? $issued->only(['units', 'bonus', 'value', 'sales_tax', 'withholding_tax', 'total']) : $this->invoices->totals($lines),
+            'month' => $this->invoices->forMonth($period, $allowed),
             'canIssue' => $request->user()->hasRole('accounts'),
             'canCancel' => $request->user()->hasRole('owner'),
         ]);
     }
 
-    public function store(Request $request, InvoiceService $invoices): RedirectResponse
+    public function store(IssueInvoiceRequest $request, IssueInvoice $issue): RedirectResponse
     {
-        $period = CarbonImmutable::createFromFormat('!Y-m', (string) $request->validate(['period' => ['required', 'date_format:Y-m']])['period']);
-        [$distributor, $customer] = $this->billTo((string) $request->input('to'), Distributor::all());
-        abort_unless($distributor, 422, 'Pick who the invoice is for.');
-        $this->authorizeDistributor($request, $distributor->id);
+        [$distributor, $customer] = $request->billTo();
 
         try {
-            $invoice = $invoices->issue($distributor, $customer, $period, $request->user());
+            $invoice = $issue->handle($distributor, $customer, $request->period(), $request->user());
         } catch (DomainException $e) {
             return back()->withErrors(['invoice' => $e->getMessage()]);
         }
-
-        ActivityLog::record('Issued invoice', "{$invoice->number} to {$invoice->billTo()}, ".fmt_rs($invoice->total));
 
         return back()->with('status', "Invoice {$invoice->number} is issued and locked. Corrections now go through a credit note.");
     }
 
-    public function cancel(Request $request, Invoice $invoice, InvoiceService $invoices): RedirectResponse
+    public function cancel(CancelInvoiceRequest $request, Invoice $invoice, CancelInvoice $cancel): RedirectResponse
     {
-        $reason = $request->validate(['reason' => ['required', 'string', 'max:255']])['reason'];
-
         try {
-            $note = $invoices->cancel($invoice, $reason, $request->user());
+            $note = $cancel->handle($invoice, $request->validated('reason'), $request->user());
         } catch (DomainException $e) {
             return back()->withErrors(['invoice' => $e->getMessage()]);
         }
-
-        ActivityLog::record('Cancelled invoice', "{$invoice->number} with credit note {$note->number}: {$reason}");
 
         return back()->with('status', "{$invoice->number} is cancelled. Credit note {$note->number} reverses it; you can now issue a new invoice.");
     }
@@ -86,12 +77,12 @@ class InvoiceController
     /** A clean page to print or save as PDF. */
     public function print(Request $request, Invoice $invoice): View
     {
-        $this->authorizeDistributor($request, $invoice->distributor_id);
+        abort_unless($request->user()->canSeeDistributor($invoice->distributor_id), 403);
 
         return view('billing::print', ['invoice' => $invoice->load(['lines', 'distributor', 'customer', 'issuedBy:id,name', 'creditNoteFor:id,number'])]);
     }
 
-    /** "d:5" is a distributor account, "c:42" a single customer. */
+    /** "d:5" is a distributor account, "c:42" a single customer; only among the distributors shown. */
     private function billTo(string $to, $distributors): array
     {
         if (preg_match('/^c:(\d+)$/', $to, $m) && ($customer = Customer::find($m[1])) && $distributors->contains('id', $customer->distributor_id)) {
@@ -102,11 +93,5 @@ class InvoiceController
         }
 
         return [null, null];
-    }
-
-    private function authorizeDistributor(Request $request, int $distributorId): void
-    {
-        $allowed = $request->user()->visibleDistributorIds();
-        abort_if($allowed !== null && ! in_array($distributorId, $allowed, true), 403);
     }
 }

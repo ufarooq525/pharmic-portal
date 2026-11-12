@@ -2,6 +2,7 @@
 
 namespace App\Modules\Access\Http\Controllers\Web;
 
+use App\Modules\Access\Http\Requests\LoginRequest;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -15,12 +16,9 @@ class LoginController
         return view('access::login');
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(LoginRequest $request): RedirectResponse
     {
-        $credentials = $request->validate([
-            'email' => ['required', 'email'],
-            'password' => ['required', 'string'],
-        ]);
+        $credentials = $request->validated();
 
         // Deactivated users cannot sign in, even with the right password.
         if (! Auth::attempt($credentials + ['is_active' => true], $request->boolean('remember'))) {

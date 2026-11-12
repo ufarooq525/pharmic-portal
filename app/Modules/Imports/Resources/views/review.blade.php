@@ -1,8 +1,8 @@
 @php
     $t = $totals;
-    $statusChip = ['confirmed' => ['Confirmed', 'ok'], 'needs_review' => ['Needs review', 'warn'], 'blocked' => ['Wrong file', 'bad']][$import->status];
+    $statusChip = [$import->status->label(), $import->status->tone()];
     $attention = collect($customers)->where('attention', true)->count();
-    $layouts = \App\Modules\Distribution\Models\Distributor::LAYOUTS;
+    $layouts = \App\Modules\Imports\Enums\ReportLayout::options();
     $bonusSource = $import->distributor->bonus_source;
     $failed = collect($import->checks)->reject(fn ($c) => $c['ok']);
     $reupload = route('imports.index', ['period' => $period->format('Y-m'), 'distributor' => $import->distributor_id]).'#upload';
@@ -20,7 +20,7 @@
             </form>
         @endif
     </x-page-header>
-    <p class="-mt-3 text-muted">{{ $import->original_name }} · {{ $layouts[$import->layout] ?? $import->layout }} · header reads “{{ $import->distributor_in_file }}”</p>
+    <p class="-mt-3 text-muted">{{ $import->original_name }} · {{ $import->layout?->label() }} · header reads “{{ $import->distributor_in_file }}”</p>
 
     @if ($failed->isNotEmpty() && ! $import->isConfirmed())
         <section class="flex flex-wrap items-start gap-4 rounded-2xl border-2 border-bad bg-bad-soft p-4 text-bad" role="alert" aria-labelledby="wrong-h">
@@ -140,7 +140,7 @@
                 @endforelse
             </div>
         </div>
-        <p class="text-[12px] text-muted">Click a customer to see its product lines. Bonus: {{ lcfirst(\App\Modules\Distribution\Models\Distributor::BONUS_SOURCES[$bonusSource] ?? $bonusSource) }} (<a href="{{ route('distributors.index', ['distributor' => $import->distributor_id]) }}">change</a>). Taxes use each product’s rates for {{ $period->format('F Y') }}.</p>
+        <p class="text-[12px] text-muted">Click a customer to see its product lines. Bonus: {{ lcfirst($bonusSource->label()) }} (<a href="{{ route('distributors.index', ['distributor' => $import->distributor_id]) }}">change</a>). Taxes use each product’s rates for {{ $period->format('F Y') }}.</p>
     </section>
 
     <div class="action-bar">
@@ -164,7 +164,7 @@
         @else
             <span class="font-bold">
                 @if ($import->isConfirmed()) Confirmed {{ $import->confirmed_at?->format('j M Y, g:i a') }}
-                @elseif ($import->status === 'blocked') Wrong file: upload the right one or discard this
+                @elseif ($import->status === \App\Modules\Imports\Enums\ImportStatus::Blocked) Wrong file: upload the right one or discard this
                 @elseif ($unmapped) Link every product before confirming
                 @else Waiting for Accounts to confirm
                 @endif

@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Modules\Imports\Enums\ImportStatus;
 use App\Modules\Access\Enums\Role;
 use App\Modules\Distribution\Models\Distributor;
 use App\Modules\Imports\Models\Import;
@@ -33,7 +34,7 @@ class AppServiceProvider extends ServiceProvider
             $query = ['period' => $period->format('Y-m')];
             $role = $request->user()?->role;
 
-            $confirmed = Import::whereDate('period', $period)->where('status', Import::CONFIRMED)->distinct()->count('distributor_id');
+            $confirmed = Import::whereDate('period', $period)->where('status', ImportStatus::Confirmed)->distinct()->count('distributor_id');
             $pending = max(0, Distributor::count() - $confirmed);
 
             // Same order as the approved Skyline board: month end, stock and money, setup.

@@ -1,8 +1,7 @@
 @php
     use App\Modules\Distribution\Models\Distributor;
-    $layouts = Distributor::LAYOUTS;
-    $bonusSources = Distributor::BONUS_SOURCES;
-    $statuses = ['confirmed' => ['Confirmed', 'ok'], 'needs_review' => ['Needs review', 'warn'], 'blocked' => ['Wrong file', 'bad']];
+    $layouts = \App\Modules\Imports\Enums\ReportLayout::options();
+    $bonusSources = \App\Modules\Distribution\Enums\BonusSource::options();
 @endphp
 <x-layouts.app title="Master data · Distributors" description="Each distributor's file format: report layout, header name, bonus source and product spellings.">
     <x-masters-tabs current="distributors" />
@@ -14,7 +13,7 @@
                    class="flex min-h-14 items-center justify-between gap-2.5 rounded-[14px] border-2 px-3 py-2.5 text-ink no-underline {{ $current?->id === $d->id ? 'border-accent bg-soft' : 'border-transparent hover:bg-sunk' }}">
                     <span class="flex min-w-0 flex-col"><b class="font-bold">{{ $d->name }}</b><span class="text-[12px] text-muted">{{ $d->city }} · {{ $d->aliases_count }} product {{ str('link')->plural($d->aliases_count) }}</span></span>
                     @if ($d->layout)
-                        <x-chip tone="info">{{ ['matrix' => 'Grid', 'lineitem' => 'Item lines', 'monthly' => 'Jan–Dec'][$d->layout] ?? $d->layout }}</x-chip>
+                        <x-chip tone="info">{{ $d->layout->shortLabel() }}</x-chip>
                     @else
                         <x-chip tone="mute">No file yet</x-chip>
                     @endif
@@ -31,8 +30,8 @@
                             <span class="text-muted">{{ $current->city }}{{ $current->phone ? ' · '.$current->phone : '' }} · {{ $current->customers_count }} customers · {{ $current->imports_count }} {{ str('file')->plural($current->imports_count) }} imported</span>
                         </div>
                         @if ($lastImport)
-                            <a href="{{ route('imports.show', $lastImport->id) }}" class="chip chip-{{ $statuses[$lastImport->status][1] }} text-[13px]">
-                                Last file: {{ \Carbon\CarbonImmutable::parse($lastImport->period)->format('M Y') }} · {{ $statuses[$lastImport->status][0] }}
+                            <a href="{{ route('imports.show', $lastImport->id) }}" class="chip chip-{{ $lastImport->status->tone() }} text-[13px]">
+                                Last file: {{ \Carbon\CarbonImmutable::parse($lastImport->period)->format('M Y') }} · {{ $lastImport->status->label() }}
                             </a>
                         @endif
                     </div>
@@ -43,7 +42,7 @@
                     <dl class="grid gap-3 sm:grid-cols-3">
                         <div class="rounded-[14px] bg-sunk px-3.5 py-3">
                             <dt class="label">Report format</dt>
-                            <dd class="m-0 mt-1 font-bold">{{ $layouts[$current->layout] ?? 'Not known yet, saved from the first confirmed file' }}</dd>
+                            <dd class="m-0 mt-1 font-bold">{{ $current->layout?->label() ?? 'Not known yet, saved from the first confirmed file' }}</dd>
                         </div>
                         <div class="rounded-[14px] bg-sunk px-3.5 py-3">
                             <dt class="label">Name at the top of the file</dt>
@@ -51,7 +50,7 @@
                         </div>
                         <div class="rounded-[14px] bg-sunk px-3.5 py-3">
                             <dt class="label">Bonus</dt>
-                            <dd class="m-0 mt-1 font-bold">{{ $bonusSources[$current->bonus_source] ?? $current->bonus_source }}</dd>
+                            <dd class="m-0 mt-1 font-bold">{{ $current->bonus_source->label() }}</dd>
                         </div>
                     </dl>
                     @if ($current->format_notes)
@@ -86,7 +85,7 @@
                                 <select id="d-layout" name="layout" class="field">
                                     <option value="">Not known yet (save from the first file)</option>
                                     @foreach ($layouts as $key => $label)
-                                        <option value="{{ $key }}" @selected(old('layout', $current->layout) === $key)>{{ $label }}</option>
+                                        <option value="{{ $key }}" @selected(old('layout', $current->layout?->value) === $key)>{{ $label }}</option>
                                     @endforeach
                                 </select>
                             </div>
@@ -94,7 +93,7 @@
                                 <label for="d-bonus" class="label">Bonus</label>
                                 <select id="d-bonus" name="bonus_source" class="field">
                                     @foreach ($bonusSources as $key => $label)
-                                        <option value="{{ $key }}" @selected(old('bonus_source', $current->bonus_source) === $key)>{{ $label }}</option>
+                                        <option value="{{ $key }}" @selected(old('bonus_source', $current->bonus_source->value) === $key)>{{ $label }}</option>
                                     @endforeach
                                 </select>
                             </div>

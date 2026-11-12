@@ -5,7 +5,6 @@
     $closingLabel = $s && $s['closing'] < 0 ? 'Paid in advance' : 'Balance due';
     $closingNote = $year == now()->format('Y') ? 'Today' : '31 Dec '.$year;
     $m = collect($month);
-    $statuses = ['confirmed' => ['Posted', 'ok'], 'needs_review' => ['Needs review', 'warn'], 'blocked' => ['Wrong file', 'bad']];
     $monthName = $period->format('F');
 @endphp
 <x-layouts.app title="Distributor ledger" description="Opening balance, invoices including both taxes, payments received and what each distributor still owes.">
@@ -26,7 +25,7 @@
                 </thead>
                 <tbody>
                 @foreach ($m as $row)
-                    @php([$label, $tone] = $row['status'] ? $statuses[$row['status']] : ['File not received', 'mute'])
+                    @php([$label, $tone] = $row['status'] ? [$row['status']->label(), $row['status']->tone()] : ['File not received', 'mute'])
                     <tr>
                         <td><a href="{{ route('ledger.index', ['distributor' => $row['distributor']->id, 'period' => $period->format('Y-m')]) }}#statement" class="font-semibold">{{ $row['distributor']->name }}, {{ $row['distributor']->city }}</a></td>
                         <td class="r">{{ fmt_num($row['opening']) }}</td>
@@ -164,7 +163,7 @@
                             <div class="flex flex-col gap-1.5">
                                 <label for="p-method" class="label">How</label>
                                 <select id="p-method" name="method" class="field">
-                                    @foreach (Payment::METHODS as $key => $label)
+                                    @foreach (\App\Modules\Ledger\Enums\PaymentMethod::options() as $key => $label)
                                         <option value="{{ $key }}" @selected(old('method', 'bank') === $key)>{{ $label }}</option>
                                     @endforeach
                                 </select>
