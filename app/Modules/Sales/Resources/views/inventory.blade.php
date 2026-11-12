@@ -22,7 +22,7 @@
             <table class="data">
                 <thead>
                 <tr>
-                    <th scope="col">Product</th><th scope="col" class="r">Opening</th><th scope="col" class="r">Received</th><th scope="col" class="r">Sold</th><th scope="col" class="r">Bonus</th>
+                    <th scope="col">Product</th><th scope="col" class="r">Opening</th><th scope="col" class="r">Received</th><th scope="col" class="r" title="Units sold before returns">Sold (gross)</th><th scope="col" class="r">Bonus</th>
                     <th scope="col" class="r">Returns</th><th scope="col" class="r">Closing</th><th scope="col" class="r">Value at cost</th><th scope="col" class="r">Value at Ex-FP</th>
                     <th scope="col" class="r">Sales tax</th><th scope="col" class="r">WHT</th><th scope="col" class="r">Lasts</th><th scope="col">Stock</th>
                 </tr>

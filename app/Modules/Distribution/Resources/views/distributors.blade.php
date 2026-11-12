@@ -60,7 +60,7 @@
 
                 @if ($canEdit)
                     <section id="profile-form" class="card" aria-labelledby="pf-h" data-drawer-source>
-                        <h2 id="pf-h" class="card-title">Edit {{ $current->name }}’s file profile</h2>
+                        <h2 id="pf-h" class="card-title">Edit {{ possessive($current->name) }} file profile</h2>
                         <form method="post" action="{{ route('distributors.update', $current) }}" class="grid gap-4 sm:grid-cols-2">
                             @csrf
                             @method('put')

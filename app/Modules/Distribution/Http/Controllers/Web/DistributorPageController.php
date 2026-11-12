@@ -41,7 +41,7 @@ class DistributorPageController
     {
         $update->handle($distributor, $request->validated());
 
-        return back()->with('status', "{$distributor->name}’s file profile is saved. New uploads are checked against it.");
+        return back()->with('status', possessive($distributor->name)." file profile is saved. New uploads are checked against it.");
     }
 
     public function unlink(Distributor $distributor, ProductAlias $alias, UnlinkProductName $unlink): RedirectResponse

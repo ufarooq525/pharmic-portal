@@ -14,6 +14,7 @@ class ChangePassword extends Action
         $user->update(['password' => $password]);
         Auth::logoutOtherDevices($password);
         $user->tokens()->delete();
+        session()->forget('weak_password');
         $this->log('Changed password', $user->name);
     }
 }

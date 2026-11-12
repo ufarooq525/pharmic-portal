@@ -86,7 +86,11 @@ final class PdfText
         $err = stream_get_contents($pipes[2]);
 
         if (proc_close($process) !== 0) {
-            throw new RuntimeException('Could not read the PDF: '.trim($err));
+            // The raw pdftotext error is for the log, not the screen.
+            if (function_exists('logger')) {
+                logger()->warning('pdftotext failed', ['error' => trim($err)]);
+            }
+            throw new RuntimeException('This PDF could not be read. It may be damaged, password-protected or a scanned image. Export it again from the distributor’s software and upload that file.');
         }
 
         return $out;

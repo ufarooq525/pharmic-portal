@@ -39,7 +39,7 @@
                         <a href="{{ route('imports.show', $currentImport) }}" class="btn btn-primary">{{ $currentImport->status === $confirmed ? 'Open the customer-wise data' : 'Review and confirm' }}</a>
                         <a href="{{ route('imports.file', $currentImport) }}" class="btn">Open the PDF</a>
                         @if ($currentImport->status === $confirmed && auth()->user()->hasRole())
-                            <form method="post" action="{{ route('imports.reverse', $currentImport) }}" data-confirm="Revert {{ $current->name }}’s {{ $period->format('F') }} import and remove the file? Its sales come out, the units go back into stock and any invoice for the month is cancelled with a credit note.">
+                            <form method="post" action="{{ route('imports.reverse', $currentImport) }}" data-confirm="Revert {{ possessive($current->name) }} {{ $period->format('F') }} import and remove the file? Its sales come out, the units go back into stock and any invoice for the month is cancelled with a credit note.">
                                 @csrf
                                 <input type="hidden" name="remove_file" value="1">
                                 <button class="btn border-transparent bg-bad-soft text-bad" data-busy-label="Reverting…">Revert and remove</button>
@@ -72,7 +72,7 @@
                         <span class="flex size-16 items-center justify-center rounded-[20px] bg-soft text-accent-text">
                             <svg aria-hidden="true" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4"/><path d="m7 9 5-5 5 5"/><path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/></svg>
                         </span>
-                        <span class="text-[20px] font-extrabold">Upload {{ $current->name }}’s {{ $period->format('F') }} PDF</span>
+                        <span class="text-[20px] font-extrabold">Upload {{ possessive($current->name) }} {{ $period->format('F') }} PDF</span>
                         <span class="text-muted">Drop the file here or click to choose · Expected layout: {{ $current->layout?->label() ?? 'not known yet, the portal will detect it' }}</span>
                         <span data-file-name class="hidden rounded-full bg-seg px-3 py-1 text-[13px] font-bold"></span>
                         <input id="file" name="file" type="file" accept="application/pdf,.pdf" required class="absolute size-px opacity-0">

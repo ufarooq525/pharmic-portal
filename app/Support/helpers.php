@@ -48,3 +48,11 @@ if (! function_exists('whatsapp_url')) {
         return 'https://wa.me/'.(strlen($digits) >= 10 ? $digits : '').'?text='.rawurlencode($text);
     }
 }
+
+if (! function_exists('possessive')) {
+    /** "Friends Enterprises’" and "Irfan’s": the apostrophe without a second s after a final s. */
+    function possessive(string $name): string
+    {
+        return $name.(str_ends_with(mb_strtolower($name), 's') ? '’' : '’s');
+    }
+}

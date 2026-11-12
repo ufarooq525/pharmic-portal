@@ -6,6 +6,7 @@ use App\Modules\Access\Http\Requests\LoginRequest;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
@@ -26,6 +27,11 @@ class LoginController
         }
 
         $request->session()->regenerate();
+
+        // Still on the password set at install time: remind on every page until it is changed.
+        if (Hash::check('change-me-now', $request->user()->password)) {
+            $request->session()->put('weak_password', true);
+        }
 
         return redirect()->intended(route('dashboard'));
     }

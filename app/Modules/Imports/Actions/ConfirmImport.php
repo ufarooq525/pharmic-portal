@@ -48,7 +48,7 @@ class ConfirmImport extends Action
 
             foreach ($import->rows as $row) {
                 $rate = $products[$row->product_id]->rateOn($period->endOfMonth())
-                    ?? throw new DomainException("No price is set for {$products[$row->product_id]->name} in {$period->format('F Y')}.");
+                    ?? throw new DomainException("No price is set for {$products[$row->product_id]->name} in {$period->format('F Y')}. Add a rate starting on or before 1 {$period->format('M Y')} under Master data → Products & taxes, then confirm again.");
 
                 $bonus = $distributor->bonusFor($row->bonus, $rate->schemeBonus($row->units));
                 $valueTp = $row->value ?? round($row->units * $rate->trade_price, 2);

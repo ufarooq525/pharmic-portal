@@ -27,7 +27,8 @@ final class Period
     {
         $latest = Import::query()->max('period');
 
-        return $latest ? CarbonImmutable::parse($latest)->startOfMonth() : CarbonImmutable::now()->startOfMonth();
+        // Month-end work is for the month that just ended, so with no files yet the default is last month.
+        return $latest ? CarbonImmutable::parse($latest)->startOfMonth() : CarbonImmutable::now()->subMonthNoOverflow()->startOfMonth();
     }
 
     /** Bindings for SQL range checks that work the same on MySQL, PostgreSQL and SQLite. */

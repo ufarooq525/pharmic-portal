@@ -94,18 +94,23 @@ class ReadImport extends Action
             ['key' => 'period', 'ok' => $sameMonth, 'message' => match (true) {
                 $sameMonth => 'The file covers '.$period->format('F Y').' only.',
                 $from === null => 'The file does not print the dates it covers.',
-                str_starts_with($from, $month) => "The file runs from {$from} to {$to}. Export one month only, so other months are not counted twice.",
-                default => "The file covers {$from} to {$to}, not ".$period->format('F Y').'.',
+                str_starts_with($from, $month) => 'The file runs from '.self::day($from).' to '.self::day($to).'. Export one month only, so other months are not counted twice.',
+                default => 'The file covers '.self::day($from).' to '.self::day($to).', not '.$period->format('F Y').'.',
             }],
             ['key' => 'distributor', 'ok' => $sameName, 'message' => $sameName
                 ? 'The name at the top of the file matches '.$distributor->name.'.'
                 : "The file header reads “{$parsed->distributorInFile}”, not {$distributor->name}."],
             ['key' => 'format', 'ok' => $sameLayout, 'message' => match (true) {
                 $distributor->layout === null => "First file from {$distributor->name}: {$layout}. This becomes its saved format when confirmed.",
-                $sameLayout => "Same report format as {$distributor->name}’s earlier files.",
+                $sameLayout => 'Same report format as '.possessive($distributor->name).' earlier files.',
                 default => "{$distributor->name} normally sends ".$distributor->layout->label()
                     .", but this file is {$layout}. Check it is the right report, or update the format on the Distributors page.",
             }],
         ];
+    }
+
+    private static function day(?string $date): string
+    {
+        return $date ? CarbonImmutable::parse($date)->format('j M Y') : '?';
     }
 }

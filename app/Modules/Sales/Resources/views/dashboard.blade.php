@@ -88,7 +88,7 @@
     </section>
 
     {{-- KPI tiles --}}
-    <div class="grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-3.5">
+    <div class="grid grid-cols-2 gap-3.5 lg:grid-cols-3 2xl:grid-cols-6">
         <x-kpi icon="box" label="Units sold" :value="fmt_num($t['units'])" :delta="$deltas['units']" :note="'+ '.fmt_num($t['bonus_units']).' bonus units'" />
         <x-kpi icon="profit" label="Gross profit" :value="fmt_rs($t['gross_profit'])" :delta="$deltas['gross_profit']" :note="fmt_pct($margin).' margin'" />
         <x-kpi icon="receipt" label="Taxes to deposit" :value="fmt_rs($t['sales_tax'] + $t['withholding_tax'])" :note="'ST '.fmt_num($t['sales_tax']).' · WHT '.fmt_num($t['withholding_tax'])" />
@@ -141,8 +141,8 @@
                             <circle cx="75" cy="75" r="{{ $donutR }}" fill="none" stroke="{{ $sl['color'] }}" stroke-width="20"
                                     stroke-dasharray="{{ round(max(0, $sl['dash'] - 2), 2) }} {{ round($donutC, 2) }}" stroke-dashoffset="{{ round($sl['offset'], 2) }}" transform="rotate(-90 75 75)"/>
                         @endforeach
-                        <text x="75" y="72" text-anchor="middle" font-size="12" fill="var(--sky-muted)">{{ $slices->count() }} {{ str('distributor')->plural($slices->count()) }}</text>
-                        <text x="75" y="90" text-anchor="middle" font-size="15" font-weight="800" fill="var(--sky-ink)">{{ fmt_num($distTotal / 1000) }}k</text>
+                        <text x="75" y="76" text-anchor="middle" font-size="17" font-weight="800" fill="var(--sky-ink)">{{ fmt_num($distTotal / 1000) }}k</text>
+                        <text x="75" y="93" text-anchor="middle" font-size="10" fill="var(--sky-muted)">Rs · {{ $slices->count() }} {{ str('distributor')->plural($slices->count()) }}</text>
                     </svg>
                     <ul class="m-0 flex min-w-[150px] flex-1 list-none flex-col gap-2 p-0">
                         @foreach ($slices as $sl)

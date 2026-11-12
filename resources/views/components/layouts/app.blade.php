@@ -125,6 +125,12 @@
         </header>
 
         <main id="main" class="mx-auto flex w-full max-w-[1320px] flex-col gap-5 px-4 pb-14 pt-6 sm:px-7 lg:pt-8">
+            @if (session('weak_password'))
+                <div role="note" class="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-bad-soft px-4 py-3 font-semibold text-bad">
+                    <span>You are still using the password set at installation. Anyone who has seen the setup notes can sign in as you.</span>
+                    <a href="{{ route('account.show') }}" data-drawer="#password-form" class="btn btn-sm border-transparent bg-bad text-surface">Change password</a>
+                </div>
+            @endif
             <x-flash />
             {{ $slot }}
         </main>
