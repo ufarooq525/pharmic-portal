@@ -260,6 +260,29 @@ document.addEventListener('click', (event) => {
     else if (event.target.closest('[data-sidebar-close]')) setSidebar(false);
 });
 
+/* Collapse the sidebar to icons on wide screens; remembered on this device. */
+function syncCollapseButton() {
+    const collapsed = document.documentElement.classList.contains('sb-collapsed');
+    const button = document.querySelector('[data-sidebar-collapse]');
+    if (!button) return;
+    button.setAttribute('aria-pressed', String(collapsed));
+    button.title = collapsed ? 'Expand menu' : 'Collapse menu';
+    const label = button.querySelector('[data-collapse-label]');
+    if (label) label.textContent = collapsed ? 'Expand menu' : 'Collapse menu';
+}
+document.addEventListener('click', (event) => {
+    const toggle = event.target.closest('[data-sidebar-collapse]');
+    const toPeriod = event.target.closest('[data-expand-to-period]');
+    if (!toggle && !toPeriod) return;
+    event.preventDefault();
+    const collapsed = toPeriod ? false : !document.documentElement.classList.contains('sb-collapsed');
+    document.documentElement.classList.toggle('sb-collapsed', collapsed);
+    try { localStorage.setItem('pharmic-sidebar', collapsed ? 'collapsed' : 'open'); } catch (e) {}
+    syncCollapseButton();
+    if (toPeriod) setTimeout(() => document.getElementById('period')?.showPicker?.(), 220);
+});
+syncCollapseButton();
+
 /* Toast */
 function toast(message, tone = 'ok') {
     const box = document.getElementById('toast');

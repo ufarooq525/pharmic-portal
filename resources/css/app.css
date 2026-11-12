@@ -177,7 +177,7 @@
     .bar-fill { @apply block h-full rounded-[7px] bg-accent; }
 
     /* Sidebar */
-    .sidebar { @apply fixed inset-y-0 left-0 z-50 flex w-[264px] flex-col gap-3 border-r border-line bg-surface px-3 py-4 transition-transform duration-200;
+    .sidebar { @apply fixed inset-y-0 left-0 z-50 flex w-[264px] flex-col gap-3 border-r border-line bg-surface px-3 py-4 transition-[transform,width] duration-200;
         transform: translateX(-100%); }
     .sidebar[data-open] { transform: none; box-shadow: 0 20px 60px rgb(0 0 0 / 0.25); }
     .sidebar-backdrop { @apply fixed inset-0 z-40 hidden bg-black/40; }
@@ -188,6 +188,19 @@
     }
     .side-link { @apply flex min-h-11 items-center gap-3 rounded-[12px] px-3 py-2 font-semibold text-nav no-underline transition-colors hover:bg-sunk hover:text-ink; }
     .side-link[aria-current='page'] { @apply bg-soft font-extrabold text-accent-text; }
+    .sb-only { display: none; }
+
+    /* Collapsed sidebar (wide screens): icons only, names show as tooltips */
+    @media (min-width: 1024px) {
+        .sb-collapsed .sidebar { width: 76px; padding-inline: 10px; }
+        .sb-collapsed .sidebar .sb-label { display: none !important; }
+        .sb-collapsed .sidebar .sb-only { display: flex; }
+        .sb-collapsed .sidebar .side-link { justify-content: center; gap: 0; padding-inline: 0; position: relative; }
+        .sb-collapsed .sidebar .side-badge { position: absolute; top: 3px; right: 5px; padding-inline: 5px; }
+        .sb-collapsed .sidebar .sb-user { flex-direction: column; padding: 8px 4px; gap: 6px; }
+        .sb-collapsed .sidebar .sb-chevron { transform: rotate(180deg); transform-origin: 14.5px 12px; }
+        .sb-collapsed .sidebar > div:first-child { justify-content: center; padding-inline: 0; }
+    }
     .icon-btn { @apply inline-flex size-10 flex-none items-center justify-center rounded-[12px] text-muted transition-colors hover:bg-sunk hover:text-ink; }
 
     /* Drawer (add / edit forms) and toast */
