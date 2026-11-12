@@ -4,7 +4,7 @@ use App\Modules\Distribution\Http\Controllers\CustomerController;
 use App\Modules\Distribution\Http\Controllers\DistributorController;
 use Illuminate\Support\Facades\Route;
 
-Route::middleware('auth:sanctum')->group(function () {
+Route::middleware(['auth:sanctum', 'role:accounts,data_entry,viewer'])->group(function () {
     Route::get('distributors', [DistributorController::class, 'index']);
     Route::get('medical-reps', [DistributorController::class, 'medicalReps']);
     Route::get('customers', [CustomerController::class, 'index']);

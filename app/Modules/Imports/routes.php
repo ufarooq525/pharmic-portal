@@ -3,7 +3,7 @@
 use App\Modules\Imports\Http\Controllers\ImportController;
 use Illuminate\Support\Facades\Route;
 
-Route::middleware('auth:sanctum')->group(function () {
+Route::middleware(['auth:sanctum', 'role:accounts,data_entry,viewer'])->group(function () {
     Route::get('imports', [ImportController::class, 'index']);
     Route::get('imports/{import}', [ImportController::class, 'show']);
 
