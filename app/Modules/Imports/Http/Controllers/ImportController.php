@@ -13,7 +13,7 @@ use App\Modules\Imports\Http\Resources\ImportDetailResource;
 use App\Modules\Imports\Http\Resources\ImportResource;
 use App\Modules\Imports\Models\Import;
 use App\Modules\Imports\Repositories\ImportRepository;
-use Carbon\CarbonImmutable;
+use App\Support\Http\Requests\PeriodRequest;
 use DomainException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -23,9 +23,9 @@ use RuntimeException;
 class ImportController
 {
     /** Each distributor with its file for the month, if any. */
-    public function index(Request $request, ImportRepository $imports, DistributorRepository $distributors): JsonResponse
+    public function index(PeriodRequest $request, ImportRepository $imports, DistributorRepository $distributors): JsonResponse
     {
-        $period = CarbonImmutable::createFromFormat('!Y-m', $request->validate(['period' => ['required', 'date_format:Y-m']])['period']);
+        $period = $request->period();
         $byDistributor = $imports->latestPerDistributor($period);
 
         return response()->json(['data' => $distributors->visible($request->user()->visibleDistributorIds())->map(fn ($d) => [

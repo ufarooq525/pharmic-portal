@@ -3,6 +3,7 @@
 namespace App\Modules\Distribution\Repositories;
 
 use App\Modules\Distribution\Models\MedicalRep;
+use App\Modules\Distribution\Models\Territory;
 use App\Support\Repositories\Repository;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Collection as BaseCollection;
@@ -18,6 +19,11 @@ class MedicalRepRepository extends Repository
     public function withTerritory(bool $activeOnly = false): Collection
     {
         return $this->query()->with('territory:id,name')->when($activeOnly, fn ($q) => $q->where('is_active', true))->orderBy('name')->get();
+    }
+
+    public function territories(): Collection
+    {
+        return Territory::orderBy('name')->get(['id', 'name']);
     }
 
     /** rep id => number of customers linked, in one grouped query. */

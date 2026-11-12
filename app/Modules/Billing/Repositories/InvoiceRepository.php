@@ -11,6 +11,7 @@ use App\Support\Period;
 use App\Support\Repositories\Repository;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 /** Invoice queries: lines built from confirmed sales, the issued invoice for an account, numbering. */
@@ -90,6 +91,22 @@ class InvoiceRepository extends Repository
     {
         return $this->query()->where('kind', InvoiceKind::Invoice)->where('status', InvoiceStatus::Issued)
             ->where('distributor_id', $distributorId)->whereDate('period', $period->startOfMonth())->with('lines')->get();
+    }
+
+    /**
+     * Who an invoice is for, from the "Bill to" value: "d:5" is distributor 5's account, "c:42" is
+     * customer 42 alone. Only among the distributors the user may see. @return array{0: ?Distributor, 1: ?Customer}
+     */
+    public function resolveBillTo(string $to, Collection $distributors): array
+    {
+        if (preg_match('/^c:(\d+)$/', $to, $m) && ($customer = Customer::find($m[1])) && $distributors->contains('id', $customer->distributor_id)) {
+            return [$distributors->firstWhere('id', $customer->distributor_id), $customer];
+        }
+        if (preg_match('/^d:(\d+)$/', $to, $m)) {
+            return [$distributors->firstWhere('id', (int) $m[1]), null];
+        }
+
+        return [null, null];
     }
 
     /** Next running number for the month: INV-2610-0001, CN-2610-0001. Call inside a transaction. */

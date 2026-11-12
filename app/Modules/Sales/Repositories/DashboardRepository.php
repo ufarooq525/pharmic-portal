@@ -9,6 +9,9 @@ use App\Modules\Imports\Models\Import;
 use App\Modules\Imports\Models\ImportRow;
 use App\Modules\Sales\Models\SaleLine;
 use App\Support\Period;
+use App\Modules\Billing\Repositories\InvoiceRepository;
+use App\Modules\Ledger\Repositories\LedgerRepository;
+use App\Modules\Payroll\Repositories\PayrollRepository;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -24,6 +27,33 @@ class DashboardRepository
 
     /** @var array<string, array> */
     private array $stockMemo = [];
+
+    public function __construct(
+        private readonly LedgerRepository $ledger,
+        private readonly InvoiceRepository $invoices,
+        private readonly PayrollRepository $payroll,
+    ) {}
+
+    /**
+     * The money side of the month: owed, received, invoiced, invoices issued and (when asked for)
+     * net payroll. Not cached, because it changes with every payment and invoice.
+     *
+     * @return array{outstanding: float, received: float, invoiced: float, invoices: int, invoicesTotal: float, payroll: ?float}
+     */
+    public function money(CarbonImmutable $period, ?array $scope, bool $withPayroll): array
+    {
+        $ledger = collect($this->ledger->month($period, $scope));
+        $issued = $this->invoices->issuedSummary($period, $scope);
+
+        return [
+            'outstanding' => $ledger->sum('balance'),
+            'received' => $ledger->sum('received'),
+            'invoiced' => $ledger->sum('invoiced'),
+            'invoices' => $issued['count'],
+            'invoicesTotal' => $issued['total'],
+            'payroll' => $withPayroll ? collect($this->payroll->month($period))->sum('net') : null,
+        ];
+    }
 
     /** Distributors the viewer may see; null for all. */
     private ?array $scope = null;

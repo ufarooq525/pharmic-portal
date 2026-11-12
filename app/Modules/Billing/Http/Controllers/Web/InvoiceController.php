@@ -8,7 +8,6 @@ use App\Modules\Billing\Http\Requests\CancelInvoiceRequest;
 use App\Modules\Billing\Http\Requests\IssueInvoiceRequest;
 use App\Modules\Billing\Models\Invoice;
 use App\Modules\Billing\Repositories\InvoiceRepository;
-use App\Modules\Distribution\Models\Customer;
 use App\Modules\Distribution\Repositories\CustomerRepository;
 use App\Modules\Distribution\Repositories\DistributorRepository;
 use App\Support\Period;
@@ -30,7 +29,7 @@ class InvoiceController
         $period = Period::fromRequest($request);
         $allowed = $request->user()->visibleDistributorIds();
         $distributors = $this->distributors->visible($allowed);
-        [$distributor, $customer] = $this->billTo((string) $request->query('to'), $distributors);
+        [$distributor, $customer] = $this->invoices->resolveBillTo((string) $request->query('to'), $distributors);
         $issued = $distributor ? $this->invoices->issuedFor($distributor, $customer, $period)?->load(['issuedBy:id,name', 'creditNote']) : null;
         $lines = $issued ? $issued->lines->map->toArray()->all() : ($distributor ? $this->invoices->lines($distributor, $customer, $period) : []);
 
@@ -80,18 +79,5 @@ class InvoiceController
         abort_unless($request->user()->canSeeDistributor($invoice->distributor_id), 403);
 
         return view('billing::print', ['invoice' => $invoice->load(['lines', 'distributor', 'customer', 'issuedBy:id,name', 'creditNoteFor:id,number'])]);
-    }
-
-    /** "d:5" is a distributor account, "c:42" a single customer; only among the distributors shown. */
-    private function billTo(string $to, $distributors): array
-    {
-        if (preg_match('/^c:(\d+)$/', $to, $m) && ($customer = Customer::find($m[1])) && $distributors->contains('id', $customer->distributor_id)) {
-            return [$distributors->firstWhere('id', $customer->distributor_id), $customer];
-        }
-        if (preg_match('/^d:(\d+)$/', $to, $m)) {
-            return [$distributors->firstWhere('id', (int) $m[1]), null];
-        }
-
-        return [null, null];
     }
 }

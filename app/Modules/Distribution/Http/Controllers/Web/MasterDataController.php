@@ -5,7 +5,6 @@ namespace App\Modules\Distribution\Http\Controllers\Web;
 use App\Modules\Distribution\Actions\SaveMedicalRep;
 use App\Modules\Distribution\Http\Requests\SaveMedicalRepRequest;
 use App\Modules\Distribution\Models\MedicalRep;
-use App\Modules\Distribution\Models\Territory;
 use App\Modules\Distribution\Repositories\DistributorRepository;
 use App\Modules\Distribution\Repositories\MedicalRepRepository;
 use App\Modules\Distribution\Repositories\ProductAliasRepository;
@@ -22,7 +21,7 @@ class MasterDataController
     {
         return view('distribution::reps', [
             'reps' => $this->reps->withTerritory(),
-            'territories' => Territory::orderBy('name')->get(['id', 'name']),
+            'territories' => $this->reps->territories(),
             'linked' => $this->reps->customerCounts(),
             'canEdit' => $request->user()->hasRole('accounts'),
             'editing' => $request->integer('edit') ?: null,

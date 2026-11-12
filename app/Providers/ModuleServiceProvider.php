@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Modules\Access\Http\Middleware\EnsureRole;
+use App\Modules\Access\Http\Middleware\SendMedicalRepsToTerritory;
 use Illuminate\Routing\Router;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
@@ -20,6 +21,7 @@ class ModuleServiceProvider extends ServiceProvider
     public function boot(Router $router): void
     {
         $router->aliasMiddleware('role', EnsureRole::class);
+        $router->aliasMiddleware('rep.home', SendMedicalRepsToTerritory::class);
 
         foreach (glob(app_path('Modules/*'), GLOB_ONLYDIR) as $module) {
             $name = Str::kebab(basename($module));

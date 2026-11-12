@@ -2,8 +2,10 @@
 
 namespace App\Modules\Billing\Http\Requests;
 
+use App\Modules\Billing\Repositories\InvoiceRepository;
 use App\Modules\Distribution\Models\Customer;
 use App\Modules\Distribution\Models\Distributor;
+use App\Modules\Distribution\Repositories\DistributorRepository;
 use App\Support\Http\Requests\FormRequest;
 use Carbon\CarbonImmutable;
 
@@ -28,11 +30,12 @@ class IssueInvoiceRequest extends FormRequest
     /** @return array{0: Distributor, 1: ?Customer} */
     public function billTo(): array
     {
-        [$type, $id] = explode(':', $this->validated('to'));
-        $customer = $type === 'c' ? Customer::findOrFail($id) : null;
-        $distributor = Distributor::findOrFail($customer?->distributor_id ?? $id);
-        abort_unless($this->user()->canSeeDistributor($distributor->id), 403);
+        $result = app(InvoiceRepository::class)->resolveBillTo(
+            $this->validated('to'),
+            app(DistributorRepository::class)->visible($this->visibleDistributorIds()),
+        );
+        abort_unless($result[0], 403);
 
-        return [$distributor, $customer];
+        return $result;
     }
 }
