@@ -76,6 +76,11 @@ document.addEventListener('submit', (event) => {
         return;
     }
     if (event.defaultPrevented || form.hasAttribute('data-upload')) return;
+    if (form.hasAttribute('data-ajax')) {
+        event.preventDefault();
+        backgroundSubmit(form);
+        return;
+    }
     showLoader();
     if (form.method.toLowerCase() === 'get') return;
 
@@ -242,3 +247,170 @@ function setupUpload(form) {
 }
 
 document.querySelectorAll('form[data-upload]').forEach(setupUpload);
+
+/* Sidebar on phones and tablets */
+const sidebar = document.getElementById('sidebar');
+function setSidebar(open) {
+    if (!sidebar) return;
+    sidebar.toggleAttribute('data-open', open);
+    document.querySelector('[data-sidebar-open]')?.setAttribute('aria-expanded', String(open));
+}
+document.addEventListener('click', (event) => {
+    if (event.target.closest('[data-sidebar-open]')) setSidebar(true);
+    else if (event.target.closest('[data-sidebar-close]')) setSidebar(false);
+});
+
+/* Toast */
+function toast(message, tone = 'ok') {
+    const box = document.getElementById('toast');
+    if (!box || !message) return;
+    box.textContent = message;
+    box.dataset.tone = tone;
+    box.hidden = false;
+    clearTimeout(box.timer);
+    box.timer = setTimeout(() => { box.hidden = true; }, 4200);
+}
+
+/*
+ * Drawer: add and edit forms open from the right without leaving the page.
+ * A link with data-drawer="#section-id" shows that section: from this page if the link is "#id",
+ * otherwise fetched from the link's URL (e.g. ?edit=5). The form posts in the background:
+ * validation errors show inside the drawer; on success the page content refreshes in place.
+ */
+const drawer = document.getElementById('drawer');
+const drawerBody = document.getElementById('drawer-body');
+const drawerTitle = document.getElementById('drawer-title');
+let drawerReturnFocus = null;
+
+function openDrawer(section, title) {
+    const copy = section.cloneNode(true);
+    copy.removeAttribute('id');
+    copy.removeAttribute('data-drawer-source');
+    // The hidden original stays on the page, so give the copy's ids a prefix to keep labels working.
+    copy.querySelectorAll('[id]').forEach((el) => { el.id = 'dw-' + el.id; });
+    copy.querySelectorAll('label[for]').forEach((el) => { el.htmlFor = 'dw-' + el.htmlFor; });
+    copy.querySelectorAll('[list]').forEach((el) => el.setAttribute('list', 'dw-' + el.getAttribute('list')));
+    const heading = copy.querySelector('h2, .card-title');
+    drawerTitle.textContent = title || heading?.textContent.trim() || '';
+    heading?.remove();
+    drawerBody.replaceChildren(...copy.childNodes);
+    drawer.hidden = false;
+    requestAnimationFrame(() => drawer.dataset.open = '');
+    document.body.style.overflow = 'hidden';
+    drawerBody.querySelector('input:not([type=hidden]), select, textarea')?.focus();
+}
+
+function closeDrawer() {
+    if (!drawer || drawer.hidden) return;
+    delete drawer.dataset.open;
+    document.body.style.overflow = '';
+    setTimeout(() => { drawer.hidden = true; drawerBody.replaceChildren(); }, 200);
+    drawerReturnFocus?.focus();
+}
+
+async function fetchPage(url, options = {}) {
+    const response = await fetch(url, { credentials: 'same-origin', ...options, headers: { 'X-Requested-With': 'XMLHttpRequest', ...(options.headers || {}) } });
+    return { response, doc: new DOMParser().parseFromString(await response.text(), 'text/html') };
+}
+
+// Swap in the main content (and sidebar badges) from a freshly loaded page, without a full reload.
+function swapPage(doc, url) {
+    const main = doc.getElementById('main');
+    if (!main) { location.assign(url); return; }
+    document.getElementById('main').replaceWith(main);
+    const nav = doc.querySelector('#sidebar nav');
+    if (nav) document.querySelector('#sidebar nav')?.replaceWith(nav);
+    document.title = doc.title;
+    if (url && url !== location.href) history.replaceState(null, '', url);
+    main.querySelectorAll('form[data-upload]').forEach(setupUpload);
+    const status = main.querySelector('[role=status]');
+    const problem = main.querySelector('[role=alert]');
+    if (status) { toast(status.textContent.trim()); status.remove(); }
+    else if (problem) problem.scrollIntoView({ block: 'center', behavior: 'smooth' });
+}
+
+document.addEventListener('click', async (event) => {
+    if (event.target.closest('[data-drawer-close]')) { closeDrawer(); return; }
+
+    const link = event.target.closest('[data-drawer]');
+    if (!link || event.metaKey || event.ctrlKey) return;
+    event.preventDefault();
+    drawerReturnFocus = link;
+    const selector = link.dataset.drawer;
+    const href = link.getAttribute('href') || '';
+
+    if (href.startsWith('#')) {
+        const section = document.querySelector(selector);
+        if (section) openDrawer(section, link.dataset.drawerTitle);
+        return;
+    }
+
+    showLoader();
+    try {
+        const { doc } = await fetchPage(link.href);
+        const section = doc.querySelector(selector);
+        section ? openDrawer(section, link.dataset.drawerTitle) : location.assign(link.href);
+    } catch (e) {
+        location.assign(link.href);
+    } finally {
+        hideLoader();
+    }
+});
+
+document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') { closeDrawer(); setSidebar(false); }
+});
+
+// Forms inside the drawer, and forms marked data-ajax, post in the background.
+drawer?.addEventListener('submit', (event) => {
+    if (event.defaultPrevented) return;
+    event.preventDefault();
+    backgroundSubmit(event.target, true);
+});
+
+async function backgroundSubmit(form, inDrawer = false) {
+    form.querySelectorAll('.field-error, [data-form-problem]').forEach((el) => el.remove());
+    form.querySelectorAll('[aria-invalid]').forEach((el) => el.removeAttribute('aria-invalid'));
+    lockButtons(form, true);
+    if (!inDrawer) showLoader();
+
+    const fail = (message) => {
+        lockButtons(form, false);
+        hideLoader();
+        if (inDrawer) form.prepend(Object.assign(document.createElement('div'), { className: 'rounded-[14px] bg-bad-soft px-3.5 py-3 font-semibold text-bad', textContent: message, dataset: { formProblem: '' } }));
+        else toast(message, 'bad');
+    };
+
+    try {
+        const { response, doc } = await fetchPage(form.action, { method: 'POST', body: new FormData(form), headers: { Accept: 'application/json, text/html' } });
+
+        if (response.status === 422 && response.headers.get('content-type')?.includes('json')) {
+            const body = JSON.parse(doc.body.textContent || '{}');
+            let placed = false;
+            Object.entries(body.errors || {}).forEach(([name, messages]) => {
+                const key = name.replace(/\.(\w+)/g, '[$1]');
+                const input = form.querySelector(`[name="${key}"], [name="${key}[]"]`);
+                if (inDrawer && input) {
+                    input.setAttribute('aria-invalid', 'true');
+                    (input.closest('div, fieldset') || input).appendChild(Object.assign(document.createElement('p'), { className: 'field-error', textContent: messages[0] }));
+                    placed = true;
+                }
+            });
+            if (!placed) return fail(Object.values(body.errors || {}).flat()[0] || body.message || 'Please check the form.');
+            lockButtons(form, false);
+            form.querySelector('[aria-invalid]')?.focus();
+            return;
+        }
+        if (!response.ok) return fail(response.status === 419 ? 'Your session expired. Reload the page and try again.' : 'Something went wrong (' + response.status + '). Nothing was saved.');
+
+        // A business-rule error comes back as the page with an error box and no success message.
+        const problem = doc.querySelector('#main [role=alert]');
+        if (problem && !doc.querySelector('#main [role=status]')) return fail(problem.textContent.trim().replace(/\s+/g, ' '));
+
+        if (inDrawer) closeDrawer();
+        hideLoader();
+        swapPage(doc, response.url);
+    } catch (e) {
+        fail('Could not save. Check the connection and try again.');
+    }
+}

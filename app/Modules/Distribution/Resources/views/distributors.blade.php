@@ -37,6 +37,9 @@
                         @endif
                     </div>
 
+                    @if ($canEdit)
+                        <a href="#profile-form" data-drawer="#profile-form" class="btn btn-sm self-start">Edit file profile</a>
+                    @endif
                     <dl class="grid gap-3 sm:grid-cols-3">
                         <div class="rounded-[14px] bg-sunk px-3.5 py-3">
                             <dt class="label">Report format</dt>
@@ -57,8 +60,8 @@
                 </section>
 
                 @if ($canEdit)
-                    <details class="card" @if ($errors->any()) open @endif>
-                        <summary class="card-title cursor-pointer">Edit the file profile</summary>
+                    <section id="profile-form" class="card" aria-labelledby="pf-h" data-drawer-source>
+                        <h2 id="pf-h" class="card-title">Edit {{ $current->name }}’s file profile</h2>
                         <form method="post" action="{{ route('distributors.update', $current) }}" class="grid gap-4 sm:grid-cols-2">
                             @csrf
                             @method('put')
@@ -99,9 +102,9 @@
                                 <label for="d-notes" class="label">Notes about this distributor’s file</label>
                                 <textarea id="d-notes" name="format_notes" rows="3" maxlength="2000" class="field">{{ old('format_notes', $current->format_notes) }}</textarea>
                             </div>
-                            <div class="sm:col-span-2"><button class="btn btn-primary">Save profile</button></div>
+                            <div class="flex gap-2 sm:col-span-2"><button class="btn btn-primary">Save profile</button><button type="button" class="btn" data-drawer-close>Cancel</button></div>
                         </form>
-                    </details>
+                    </section>
                 @endif
 
                 <section class="card" aria-labelledby="alias-h">
@@ -118,7 +121,7 @@
                                         <td class="font-semibold">{{ $a->product->name }}</td>
                                         @if ($canEdit)
                                             <td class="text-right">
-                                                <form method="post" action="{{ route('distributors.unlink', [$current, $a]) }}">
+                                                <form method="post" action="{{ route('distributors.unlink', [$current, $a]) }}" data-ajax data-confirm="Unlink “{{ $a->name_in_file }}”?">
                                                     @csrf
                                                     @method('delete')
                                                     <button class="btn btn-sm" aria-label="Unlink {{ $a->name_in_file }}">Unlink</button>

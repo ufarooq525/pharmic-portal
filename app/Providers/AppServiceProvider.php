@@ -56,6 +56,7 @@ class AppServiceProvider extends ServiceProvider
             }
 
             $view->with('period', $period)->with('navItems', array_map(fn ($i) => [
+                'route' => $i[0],
                 'url' => route($i[0], $query),
                 'label' => $i[1],
                 'active' => $request->routeIs(...$i[2]),

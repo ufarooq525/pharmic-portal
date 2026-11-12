@@ -28,7 +28,7 @@
                             <td class="font-semibold">{{ $a->product->name }}</td>
                             @if ($canEdit)
                                 <td class="text-right">
-                                    <form method="post" action="{{ route('distributors.unlink', [$a->distributor_id, $a]) }}" data-confirm="Unlink “{{ $a->name_in_file }}”? The next file that uses it will ask you to link it again.">
+                                    <form method="post" action="{{ route('distributors.unlink', [$a->distributor_id, $a]) }}" data-ajax data-confirm="Unlink “{{ $a->name_in_file }}”? The next file that uses it will ask you to link it again.">
                                         @csrf
                                         @method('delete')
                                         <button class="btn btn-sm">Unlink</button>

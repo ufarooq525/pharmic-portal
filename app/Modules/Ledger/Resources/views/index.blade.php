@@ -86,7 +86,10 @@
                 </div>
 
                 <section class="card" aria-labelledby="stmt-h">
-                    <h2 id="stmt-h" class="card-title">Statement</h2>
+                    <div class="flex flex-wrap items-center justify-between gap-3">
+                        <h2 id="stmt-h" class="card-title">Statement</h2>
+                        @if ($canRecord)<a href="#pay-form" data-drawer="#pay-form" class="btn btn-primary btn-sm">+ Record payment</a>@endif
+                    </div>
                     <div class="table-wrap">
                         <table class="data">
                             <thead>
@@ -120,7 +123,7 @@
                                     @if ($canRemove)
                                         <td class="text-right">
                                             @if ($r['kind'] === 'payment')
-                                                <form method="post" action="{{ route('ledger.payments.destroy', $r['payment_id']) }}" data-confirm="Remove this payment of {{ fmt_rs($r['credit']) }} from the ledger?">
+                                                <form method="post" action="{{ route('ledger.payments.destroy', $r['payment_id']) }}" data-ajax data-confirm="Remove this payment of {{ fmt_rs($r['credit']) }} from the ledger?">
                                                     @csrf
                                                     @method('delete')
                                                     <button class="btn btn-sm">Remove</button>
@@ -146,7 +149,7 @@
                 </section>
 
                 @if ($canRecord)
-                    <section class="card" aria-labelledby="pay-h">
+                    <section id="pay-form" class="card" aria-labelledby="pay-h" data-drawer-source>
                         <h2 id="pay-h" class="card-title">Record a payment from {{ $current->name }}</h2>
                         <form method="post" action="{{ route('ledger.payments.store', $current) }}" class="grid gap-4 sm:grid-cols-[repeat(auto-fit,minmax(170px,1fr))]">
                             @csrf

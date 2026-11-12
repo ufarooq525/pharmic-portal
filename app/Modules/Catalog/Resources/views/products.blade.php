@@ -35,7 +35,7 @@
                         @endif
                         <td class="text-[12px] text-muted">{{ $product->aliases->map(fn ($a) => $a->name_in_file)->unique()->take(4)->join(' · ') ?: '–' }}</td>
                         @if ($canEdit)
-                            <td><a href="{{ request()->fullUrlWithQuery(['edit' => $product->id]) }}#rate-form" class="btn btn-sm">Change</a></td>
+                            <td><a href="{{ request()->fullUrlWithQuery(['edit' => $product->id]) }}#rate-form" data-drawer="#rate-form" class="btn btn-sm">Change</a></td>
                         @endif
                     </tr>
                 @endforeach
@@ -47,7 +47,7 @@
 
     @if ($canEdit && ($product = $products->firstWhere('id', $editing)))
         @php($rate = $product->rateOn($asOf))
-        <section id="rate-form" class="card flex flex-col gap-4" aria-labelledby="r-h">
+        <section id="rate-form" class="card flex flex-col gap-4" aria-labelledby="r-h" data-drawer-source>
             <h2 id="r-h" class="card-title">New rates for {{ $product->name }}</h2>
             <form method="post" action="{{ route('products.rates', ['product' => $product, 'period' => $period->format('Y-m')]) }}" class="grid gap-3 sm:grid-cols-3 lg:grid-cols-5">
                 @csrf
@@ -69,7 +69,7 @@
                 @endforeach
                 <div class="flex items-end gap-2">
                     <button class="btn btn-primary">Save rates</button>
-                    <a href="{{ request()->fullUrlWithQuery(['edit' => null]) }}" class="btn">Cancel</a>
+                    <button type="button" class="btn" data-drawer-close>Cancel</button>
                 </div>
             </form>
         </section>

@@ -55,7 +55,7 @@
                         <td><x-chip :tone="$tone">{{ $label }}</x-chip></td>
                         <td>
                             @if ($canAssign)
-                                <form method="post" action="{{ route('customers.reps', $c) }}" class="flex flex-wrap items-center gap-1.5">
+                                <form method="post" action="{{ route('customers.reps', $c) }}" data-ajax class="flex flex-wrap items-center gap-1.5">
                                     @csrf @method('put')
                                     @php($current = $c->medicalReps->pluck('id')->values())
                                     @foreach ([1, 2] as $slot)

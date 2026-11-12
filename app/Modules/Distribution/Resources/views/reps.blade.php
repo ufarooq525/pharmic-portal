@@ -2,7 +2,10 @@
     <x-masters-tabs current="reps" />
 
     <section class="card" aria-labelledby="reps-h">
-        <h2 id="reps-h" class="card-title">Medical reps</h2>
+        <div class="flex flex-wrap items-center justify-between gap-3">
+            <h2 id="reps-h" class="card-title">Medical reps</h2>
+            @if ($canEdit)<a href="#rep-form" data-drawer="#rep-form" data-drawer-title="Add a medical rep" class="btn btn-primary btn-sm">+ Add rep</a>@endif
+        </div>
         <div class="table-wrap">
             <table class="data">
                 <thead>
@@ -21,7 +24,7 @@
                         <td class="r">{{ fmt_num($linked[$rep->id] ?? 0) }}</td>
                         <td><x-chip :tone="$rep->is_active ? 'ok' : 'mute'">{{ $rep->is_active ? 'Active' : 'Inactive' }}</x-chip></td>
                         @if ($canEdit)
-                            <td class="text-right"><a href="{{ route('reps.index', ['edit' => $rep->id]) }}#rep-form" class="btn btn-sm">Edit</a></td>
+                            <td class="text-right"><a href="{{ route('reps.index', ['edit' => $rep->id]) }}#rep-form" data-drawer="#rep-form" class="btn btn-sm">Edit</a></td>
                         @endif
                     </tr>
                 @endforeach
@@ -33,7 +36,7 @@
 
     @if ($canEdit)
         @php($rep = $reps->firstWhere('id', $editing))
-        <section id="rep-form" class="card scroll-mt-4" aria-labelledby="repf-h">
+        <section id="rep-form" class="card scroll-mt-4" aria-labelledby="repf-h" data-drawer-source>
             <h2 id="repf-h" class="card-title">{{ $rep ? 'Edit '.$rep->name : 'Add a medical rep' }}</h2>
             <form method="post" action="{{ $rep ? route('reps.update', $rep) : route('reps.store') }}" class="grid gap-4 sm:grid-cols-[repeat(auto-fit,minmax(170px,1fr))]">
                 @csrf
@@ -64,7 +67,7 @@
                 @endif
                 <div class="flex flex-wrap gap-2 sm:col-span-full">
                     <button class="btn btn-primary">{{ $rep ? 'Save' : 'Add rep' }}</button>
-                    @if ($rep)<a href="{{ route('reps.index') }}" class="btn">Cancel</a>@endif
+                    <button type="button" class="btn" data-drawer-close>Cancel</button>
                 </div>
             </form>
         </section>

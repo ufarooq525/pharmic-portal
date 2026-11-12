@@ -5,7 +5,7 @@
 <x-layouts.app title="Inventory" description="Stock movement and closing stock for {{ $period->format('F Y') }}.">
     <x-page-header title="Inventory" sub="Stock for {{ $period->format('F Y') }}. Stock receipts add units; confirmed imports take out units sold plus bonus units; returns add stock back. Opening stock comes from the client’s Excel sheet.">
         @if ($canReceive)
-            <a href="#receive" class="btn btn-primary">Receive stock</a>
+            <a href="#receive" data-drawer="#receive" class="btn btn-primary">+ Receive stock</a>
         @endif
     </x-page-header>
 
@@ -62,7 +62,7 @@
     </section>
 
     @if ($canReceive)
-        <section id="receive" class="card scroll-mt-4" aria-labelledby="rcv-h">
+        <section id="receive" class="card scroll-mt-4" aria-labelledby="rcv-h" data-drawer-source>
             <h2 id="rcv-h" class="card-title">Receive stock</h2>
             <form method="post" action="{{ route('inventory.receipts.store') }}" enctype="multipart/form-data" class="flex flex-col gap-4">
                 @csrf
@@ -139,7 +139,7 @@
                             @if ($canReceive)
                                 <td class="text-right">
                                     @if ($rc->isPosted())
-                                        <form method="post" action="{{ route('inventory.receipts.revert', $rc) }}" data-confirm="Revert receipt #{{ $rc->id }}? Its {{ fmt_num($rc->total_units) }} units come back out of stock.">
+                                        <form method="post" action="{{ route('inventory.receipts.revert', $rc) }}" data-ajax data-confirm="Revert receipt #{{ $rc->id }}? Its {{ fmt_num($rc->total_units) }} units come back out of stock.">
                                             @csrf
                                             <button class="btn btn-sm" data-busy-label="Reverting…">Revert</button>
                                         </form>

@@ -41,7 +41,10 @@
         </section>
     @else
         <section class="card" aria-labelledby="users-h">
-            <h2 id="users-h" class="card-title">Users</h2>
+            <div class="flex flex-wrap items-center justify-between gap-3">
+                <h2 id="users-h" class="card-title">Users</h2>
+                <a href="#user-form" data-drawer="#user-form" data-drawer-title="Add a user" class="btn btn-primary btn-sm">+ Add user</a>
+            </div>
             <div class="table-wrap">
                 <table class="data">
                     <thead><tr><th scope="col">Name</th><th scope="col">Login</th><th scope="col">Role</th><th scope="col">Data scope</th><th scope="col">Status</th><th scope="col"><span class="sr-only">Edit</span></th></tr></thead>
@@ -53,7 +56,7 @@
                             <td>{{ $u->role?->label() }}</td>
                             <td>{{ $scopeOf($u) }}</td>
                             <td><x-chip :tone="$u->is_active ? 'ok' : 'mute'">{{ $u->is_active ? 'Active' : 'Deactivated' }}</x-chip></td>
-                            <td class="text-right"><a href="{{ route('users.index', ['edit' => $u->id]) }}#user-form" class="btn btn-sm">Edit</a></td>
+                            <td class="text-right"><a href="{{ route('users.index', ['edit' => $u->id]) }}#user-form" data-drawer="#user-form" class="btn btn-sm">Edit</a></td>
                         </tr>
                     @endforeach
                     </tbody>
@@ -61,7 +64,7 @@
             </div>
         </section>
 
-        <section id="user-form" class="card scroll-mt-4" aria-labelledby="uf-h">
+        <section id="user-form" class="card scroll-mt-4" aria-labelledby="uf-h" data-drawer-source>
             <h2 id="uf-h" class="card-title">{{ $editUser ? 'Edit '.$editUser->name : 'Add a user' }}</h2>
             <form method="post" action="{{ $editUser ? route('users.update', $editUser) : route('users.store') }}" class="grid gap-4 sm:grid-cols-[repeat(auto-fit,minmax(200px,1fr))]">
                 @csrf
@@ -108,7 +111,7 @@
                 </fieldset>
                 <div class="flex gap-2 sm:col-span-full">
                     <button class="btn btn-primary">{{ $editUser ? 'Save' : 'Add user' }}</button>
-                    @if ($editUser)<a href="{{ route('users.index') }}" class="btn">Cancel</a>@endif
+                    <button type="button" class="btn" data-drawer-close>Cancel</button>
                 </div>
             </form>
         </section>

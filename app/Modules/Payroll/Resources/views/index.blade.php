@@ -36,7 +36,7 @@
                         <td class="whitespace-nowrap text-right">
                             <a href="{{ route('payroll.payslip', [$rep] + $q) }}" target="_blank" rel="noopener" class="btn btn-sm">Payslip</a>
                             <a href="{{ whatsapp_url($rep->phone, config('pharmic.company')." payslip, {$period->format('F Y')}\n{$rep->name} · {$rep->territory->name}\nBase ".fmt_rs($row['base']).' + incentive '.fmt_rs($row['incentive']).($row['allowance'] ? ' + allowance '.fmt_rs($row['allowance']) : '').($row['deductions'] ? ' − deductions '.fmt_rs($row['deductions']) : '')."\nNet pay: ".fmt_rs($row['net'])) }}" target="_blank" rel="noopener" class="btn btn-sm">WhatsApp</a>
-                            @if ($canEdit)<a href="{{ route('payroll.index', $q + ['edit' => $rep->id]) }}#adjust" class="btn btn-sm">Adjust</a>@endif
+                            @if ($canEdit)<a href="{{ route('payroll.index', $q + ['edit' => $rep->id]) }}#adjust" data-drawer="#adjust" class="btn btn-sm">Adjust</a>@endif
                         </td>
                     </tr>
                 @endforeach
@@ -50,7 +50,7 @@
     </section>
 
     @if ($canEdit && ($row = $r->first(fn ($x) => $x['rep']->id === $editing)))
-        <section id="adjust" class="card scroll-mt-4" aria-labelledby="adj-h">
+        <section id="adjust" class="card scroll-mt-4" aria-labelledby="adj-h" data-drawer-source>
             <h2 id="adj-h" class="card-title">Adjust {{ $row['rep']->name }}’s {{ $period->format('F') }} pay</h2>
             <form method="post" action="{{ route('payroll.adjust', $row['rep']) }}" class="grid gap-4 sm:grid-cols-[repeat(auto-fit,minmax(170px,1fr))]">
                 @csrf
@@ -70,7 +70,7 @@
                 </div>
                 <div class="flex gap-2 sm:col-span-full">
                     <button class="btn btn-primary">Save</button>
-                    <a href="{{ route('payroll.index', $q) }}" class="btn">Cancel</a>
+                    <button type="button" class="btn" data-drawer-close>Cancel</button>
                 </div>
             </form>
         </section>

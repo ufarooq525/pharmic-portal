@@ -176,6 +176,34 @@
     .bar-track { @apply block h-3.5 overflow-hidden rounded-[7px] bg-hair; }
     .bar-fill { @apply block h-full rounded-[7px] bg-accent; }
 
+    /* Sidebar */
+    .sidebar { @apply fixed inset-y-0 left-0 z-50 flex w-[264px] flex-col gap-3 border-r border-line bg-surface px-3 py-4 transition-transform duration-200;
+        transform: translateX(-100%); }
+    .sidebar[data-open] { transform: none; box-shadow: 0 20px 60px rgb(0 0 0 / 0.25); }
+    .sidebar-backdrop { @apply fixed inset-0 z-40 hidden bg-black/40; }
+    .sidebar[data-open] + .sidebar-backdrop { @apply block; }
+    @media (min-width: 1024px) {
+        .sidebar { position: sticky; top: 0; height: 100vh; transform: none; flex: none; }
+        .sidebar-backdrop { display: none !important; }
+    }
+    .side-link { @apply flex min-h-11 items-center gap-3 rounded-[12px] px-3 py-2 font-semibold text-nav no-underline transition-colors hover:bg-sunk hover:text-ink; }
+    .side-link[aria-current='page'] { @apply bg-soft font-extrabold text-accent-text; }
+    .icon-btn { @apply inline-flex size-10 flex-none items-center justify-center rounded-[12px] text-muted transition-colors hover:bg-sunk hover:text-ink; }
+
+    /* Drawer (add / edit forms) and toast */
+    .drawer { @apply fixed inset-0 z-[70]; }
+    .drawer[hidden] { display: none; }
+    .drawer-backdrop { @apply absolute inset-0 bg-black/40 opacity-0 transition-opacity duration-200; }
+    .drawer-panel { @apply absolute inset-y-0 right-0 flex w-full max-w-[560px] flex-col bg-surface transition-transform duration-200;
+        transform: translateX(100%); box-shadow: -20px 0 60px rgb(0 0 0 / 0.2); }
+    .drawer[data-open] .drawer-backdrop { opacity: 1; }
+    .drawer[data-open] .drawer-panel { transform: none; }
+    .drawer-panel .card { box-shadow: none; padding: 0; border-radius: 0; }
+    .js [data-drawer-source] { display: none; }
+    .toast { @apply fixed bottom-5 left-1/2 z-[80] max-w-[92vw] -translate-x-1/2 rounded-2xl bg-bar px-5 py-3 font-semibold text-white shadow-lg; }
+    .toast[data-tone='bad'] { @apply bg-bad text-white; }
+    .field-error { @apply mt-1 text-[12.5px] font-semibold text-bad; }
+
     /* Dashboard */
     .hero { @apply relative overflow-hidden rounded-[24px] bg-bar p-6 text-white sm:p-7; box-shadow: var(--sky-shadow); }
     .hero::after { content: ''; position: absolute; inset: auto -120px -160px auto; width: 420px; height: 420px; border-radius: 50%;
@@ -195,6 +223,10 @@
     /* Dark sticky action bar (import review) */
     .action-bar { @apply sticky bottom-3 flex flex-wrap items-center justify-between gap-3.5 rounded-2xl bg-bar px-[18px] py-3.5 text-white; }
 }
+
+/* Unlayered, so it beats the grid utilities: forms inside the drawer stack in one column. */
+.drawer-panel form[class*='grid'] { grid-template-columns: minmax(0, 1fr) !important; }
+.drawer-panel .sm\:col-span-2, .drawer-panel .sm\:col-span-full { grid-column: auto; }
 
 @keyframes page-loader { from { transform: translateX(-100%); } to { transform: translateX(250%); } }
 
