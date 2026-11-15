@@ -134,14 +134,37 @@
     .num { @apply font-mono; font-variant-numeric: tabular-nums; }
 
     /* Half-width cards wrap to full width under 460px of room, exactly like the Skyline board */
-    .blocks { @apply flex flex-wrap items-stretch gap-5; }
+    /* align-content: start, so spare height never stretches a row of cards (it made empty cards 2000px tall). */
+    .blocks { @apply flex flex-wrap items-stretch content-start gap-5; }
     .block-half { flex: 1 1 460px; }
     .block-full { flex: 1 1 100%; }
 
+    /* Dashboard grid: 12 columns from lg, one column below. Rows only as tall as their tallest card. */
+    .dash-grid { @apply grid content-start gap-5 lg:grid-cols-12; }
+    .dash-grid > * { @apply min-w-0; }
+    .span-4 { @apply lg:col-span-6 xl:col-span-4; }
+    .span-5 { @apply lg:col-span-5; }
+    .span-6 { @apply lg:col-span-6; }
+    .span-7 { @apply lg:col-span-7; }
+    .span-12 { @apply lg:col-span-12; }
+
+    /* Card heading with a tinted icon (--tone is a chart colour) */
+    .card-head { @apply flex flex-wrap items-center gap-2.5; }
+    .card-icon { @apply flex size-8 flex-none items-center justify-center rounded-[10px];
+        color: var(--tone); background: color-mix(in oklab, var(--tone) 13%, transparent); }
+    .card-head .card-title { @apply text-[16px]; }
+
+    /* Empty card body */
+    .empty-state { @apply flex flex-1 flex-col items-center justify-center gap-1.5 rounded-2xl border border-dashed border-line px-5 py-8 text-center; }
+    .empty-state-icon { @apply mb-1 flex size-11 items-center justify-center rounded-full bg-sunk text-muted; }
+
     /* KPI tiles */
-    .kpi { @apply flex flex-col gap-1.5 rounded-[18px] bg-surface p-[18px]; box-shadow: var(--sky-shadow); }
+    .kpi { @apply relative flex flex-col gap-2 overflow-hidden rounded-[18px] bg-surface p-[18px]; box-shadow: var(--sky-shadow); }
+    .kpi::before { content: ''; position: absolute; inset: 0 0 auto 0; height: 3px; background: var(--tone, var(--sky-accent)); opacity: .85; }
+    .kpi-icon { @apply flex size-9 flex-none items-center justify-center rounded-xl;
+        color: var(--tone); background: color-mix(in oklab, var(--tone) 13%, transparent); }
     .kpi-label { @apply text-[13px] font-semibold text-muted; }
-    .kpi-value { @apply text-[24px] font-extrabold tracking-[-0.02em]; font-variant-numeric: tabular-nums; }
+    .kpi-value { @apply text-[20px] sm:text-[26px] leading-tight font-extrabold tracking-[-0.02em]; font-variant-numeric: tabular-nums; }
     .kpi-note { @apply self-start rounded-full bg-soft px-[9px] py-0.5 text-[12px] font-semibold text-softfg; }
 
     /* Buttons and fields */
@@ -284,6 +307,26 @@
     .hero { @apply relative overflow-hidden rounded-[24px] bg-bar p-6 text-white sm:p-7; box-shadow: var(--sky-shadow); }
     .hero::after { content: ''; position: absolute; inset: auto -120px -160px auto; width: 420px; height: 420px; border-radius: 50%;
         background: radial-gradient(closest-side, rgb(157 184 255 / 0.22), transparent); pointer-events: none; }
+    .hero-glow { position: absolute; inset: -140px auto auto -100px; width: 380px; height: 380px; border-radius: 50%;
+        background: radial-gradient(closest-side, rgb(37 88 215 / 0.45), transparent); pointer-events: none; }
+    .hero-eyebrow { @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[12px] font-bold; background: rgb(255 255 255 / 0.1); color: #c9d6ff; }
+    .hero-sub { color: #c3cbe0; }
+    .btn-ghost-dark { @apply border-white/25 bg-white/10 text-white hover:border-white/60; }
+    .btn-light { @apply border-white bg-white text-[#141b2b] hover:bg-[#eaf0fc]; }
+    /* One segment per distributor: green when confirmed, amber when it needs a look, faint when no file yet */
+    .close-track { @apply flex h-2.5 gap-1; }
+    .close-seg { @apply flex-1 rounded-full; background: rgb(255 255 255 / 0.16); }
+    .close-seg[data-tone='ok'] { background: #4ade80; }
+    .close-seg[data-tone='warn'], .close-seg[data-tone='bad'] { background: #fbbf24; }
+    .close-seg[data-tone='info'] { background: #9db8ff; }
+    .ring { --p: 0; @apply relative flex size-[92px] flex-none items-center justify-center rounded-full;
+        background: conic-gradient(#4ade80 calc(var(--p) * 1%), rgb(255 255 255 / 0.14) 0); }
+    .ring::before { content: ''; position: absolute; inset: 9px; border-radius: 50%; background: var(--sky-bar); }
+    .ring > * { position: relative; }
+    .toolbar { @apply flex flex-wrap items-end gap-2.5 rounded-[18px] bg-surface px-4 py-3; box-shadow: var(--sky-shadow); }
+    .attn { @apply flex items-center gap-3 rounded-2xl border border-hair bg-sunk px-3.5 py-3; transition: border-color .15s; }
+    .attn:hover { @apply border-line2; }
+    .attn-icon { @apply flex size-9 flex-none items-center justify-center rounded-xl; }
     .stat-icon { @apply flex size-9 flex-none items-center justify-center rounded-xl bg-soft text-accent-text; }
     .rank { @apply flex size-8 flex-none items-center justify-center rounded-full bg-seg text-[13px] font-extrabold text-nav; }
     .dot { @apply inline-block size-2.5 flex-none rounded-full; }
