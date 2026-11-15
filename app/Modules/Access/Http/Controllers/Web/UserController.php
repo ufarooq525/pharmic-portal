@@ -24,13 +24,21 @@ class UserController
     {
         $roleList = $roles->forAdmin();
         $editingRole = $request->integer('role') ?: null;
+        $tab = $request->query('tab') === 'roles' ? 'roles' : 'people';
+        $search = mb_substr(trim((string) $request->query('q')), 0, 100);
+        $people = $users->forAdmin(25, $tab === 'people' ? $search : '');
+        $matchingRoles = $tab === 'roles' && $search !== ''
+            ? $roleList->filter(fn ($r) => str_contains(mb_strtolower($r->name.' '.$r->description), mb_strtolower($search)))
+            : $roleList;
 
         return view('access::users', [
-            'tab' => $request->query('tab') === 'roles' ? 'roles' : 'people',
-            'users' => $users->forAdmin(),
+            'tab' => $tab,
+            'search' => $search,
+            'users' => $people,
+            'peopleCount' => $tab === 'people' && $search === '' ? $people->total() : $users->query()->count(),
             'editUser' => $users->forEdit($request->integer('edit') ?: null),
             'roles' => $roleList,
-            'rolesPage' => Paginate::collection($roleList, 25, 'roles_page'),
+            'rolesPage' => Paginate::collection($matchingRoles, 25, 'roles_page'),
             'editRole' => $roleList->firstWhere('id', $editingRole),
             'editRolePeople' => $editingRole ? $users->namesWithRole($editingRole) : collect(),
             'rolePermissions' => $roleList->mapWithKeys(fn ($r) => [$r->id => $r->permissionValues()]),

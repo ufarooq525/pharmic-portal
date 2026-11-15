@@ -18,7 +18,7 @@
     <x-page-header title="Users and roles" sub="A role is a set of permissions. Each person gets one role, plus any extra permissions you tick for them." />
 
     <nav class="tabs" aria-label="Users and roles">
-        <a href="{{ route('users.index') }}" class="tab" @if ($tab === 'people') aria-current="page" @endif>People <span class="text-muted">{{ $users->total() }}</span></a>
+        <a href="{{ route('users.index') }}" class="tab" @if ($tab === 'people') aria-current="page" @endif>People <span class="text-muted">{{ $peopleCount }}</span></a>
         <a href="{{ route('users.index', ['tab' => 'roles']) }}" class="tab" @if ($tab === 'roles') aria-current="page" @endif>Roles <span class="text-muted">{{ $roles->count() }}</span></a>
     </nav>
 
@@ -31,10 +31,14 @@
                 </div>
                 <a href="#role-form" data-drawer="#role-form" data-drawer-title="Add a role" class="btn btn-primary btn-sm">+ Add role</a>
             </div>
+            @include('access::_list-search', ['tabValue' => 'roles', 'placeholder' => 'Role name or what it’s for'])
             <div class="table-wrap">
                 <table class="data">
                     <thead><tr><th scope="col">Role</th><th scope="col" class="r">People</th><th scope="col">Permissions</th><th scope="col"><span class="sr-only">Actions</span></th></tr></thead>
                     <tbody>
+                    @if ($rolesPage->isEmpty())
+                        <tr><td colspan="4" class="py-6 text-center text-muted">No role matches “{{ $search }}”. <a href="{{ route('users.index', ['tab' => 'roles']) }}" class="font-bold text-accent hover:underline">Clear the search</a></td></tr>
+                    @endif
                     @foreach ($rolesPage as $r)
                         @php $count = count($rolePermissions[$r->id]); @endphp
                         <tr>
@@ -97,10 +101,14 @@
                 <h2 id="users-h" class="card-title">People</h2>
                 <a href="#user-form" data-drawer="#user-form" data-drawer-title="Add a person" class="btn btn-primary btn-sm">+ Add person</a>
             </div>
+            @include('access::_list-search', ['tabValue' => null, 'placeholder' => 'Name, email or role'])
             <div class="table-wrap">
                 <table class="data">
                     <thead><tr><th scope="col">Name</th><th scope="col">Login</th><th scope="col">Role</th><th scope="col">Sees</th><th scope="col">Status</th><th scope="col"><span class="sr-only">Edit</span></th></tr></thead>
                     <tbody>
+                    @if ($users->isEmpty() && $search !== '')
+                        <tr><td colspan="6" class="py-6 text-center text-muted">Nobody matches “{{ $search }}”. <a href="{{ route('users.index') }}" class="font-bold text-accent hover:underline">Clear the search</a></td></tr>
+                    @endif
                     @foreach ($users as $u)
                         @php $extras = count($u->extraPermissionValues()); @endphp
                         <tr>

@@ -668,6 +668,14 @@ function refreshPermissions(form) {
     // An action someone could tick before the role changed still needs its view.
     boxes.filter((cb) => cb.checked && cb.dataset.requires).forEach((cb) => tickPermission(box, cb.dataset.requires, true));
 
+    box.querySelectorAll('[data-perm-group]').forEach((group) => {
+        const all = [...group.querySelectorAll('[data-perm]')];
+        const on = all.filter((cb) => cb.checked).length;
+        const count = group.querySelector('[data-perm-count]');
+        count.textContent = `${on} of ${all.length}`;
+        count.toggleAttribute('data-some', on > 0);
+    });
+
     const ticked = boxes.filter((cb) => cb.checked).length;
     const summary = box.querySelector('[data-perm-summary]');
     if (summary) {
@@ -709,6 +717,71 @@ document.addEventListener('click', (event) => {
 });
 
 document.querySelectorAll('[data-permission-form]').forEach(refreshPermissions);
+
+/*
+ * Permission groups collapse (closed by default; each header shows "2 of 4" ticked) and the list can
+ * be searched: matching permissions show with their group opened, the rest are hidden while searching.
+ */
+function showPermGroups(box) {
+    const words = (box.querySelector('[data-perm-search]')?.value || '').toLowerCase().split(/\s+/).filter(Boolean);
+    let matches = 0;
+    box.querySelectorAll('[data-perm-group]').forEach((group) => {
+        const name = group.querySelector('.perm-group-name').textContent.toLowerCase();
+        let visible = 0;
+        group.querySelectorAll('.perm').forEach((perm) => {
+            const text = name + ' ' + perm.textContent.toLowerCase();
+            perm.hidden = !words.every((w) => text.includes(w));
+            if (!perm.hidden) visible++;
+        });
+        matches += visible;
+        const open = words.length ? visible > 0 : group.dataset.open === '1';
+        group.hidden = words.length > 0 && visible === 0;
+        group.querySelector('[data-perm-group-body]').hidden = !open;
+        group.querySelector('[data-perm-group-toggle]').setAttribute('aria-expanded', String(open));
+    });
+    const empty = box.querySelector('[data-perm-empty]');
+    empty.hidden = !words.length || matches > 0;
+    empty.textContent = empty.hidden ? '' : `No permission matches “${words.join(' ')}”.`;
+    const toggleAll = box.querySelector('[data-perm-toggle-all]');
+    toggleAll.hidden = words.length > 0;
+    toggleAll.textContent = [...box.querySelectorAll('[data-perm-group]')].every((g) => g.dataset.open === '1') ? 'Collapse all' : 'Expand all';
+}
+
+document.addEventListener('click', (event) => {
+    const toggle = event.target.closest('[data-perm-group-toggle]');
+    const toggleAll = event.target.closest('[data-perm-toggle-all]');
+    if (!toggle && !toggleAll) return;
+    const box = event.target.closest('[data-permissions]');
+    if (toggle) {
+        const group = toggle.closest('[data-perm-group]');
+        const open = toggle.getAttribute('aria-expanded') !== 'true';
+        // Opening or closing one group while searching ends the search, so what you see matches the header.
+        const search = box.querySelector('[data-perm-search]');
+        if (search.value) { search.value = ''; box.querySelectorAll('[data-perm-group]').forEach((g) => { g.dataset.open = g.querySelector('[data-perm-group-toggle]').getAttribute('aria-expanded') === 'true' ? '1' : g.dataset.open; }); }
+        group.dataset.open = open ? '1' : '0';
+    } else {
+        const open = toggleAll.textContent.trim() === 'Expand all';
+        box.querySelectorAll('[data-perm-group]').forEach((g) => { g.dataset.open = open ? '1' : '0'; });
+    }
+    showPermGroups(box);
+});
+
+document.addEventListener('input', (event) => {
+    if (event.target.matches('[data-perm-search]')) showPermGroups(event.target.closest('[data-permissions]'));
+});
+
+// Enter in the search box must not save the form; Escape clears the search before it would close the drawer.
+document.addEventListener('keydown', (event) => {
+    const search = event.target.closest?.('[data-perm-search]');
+    if (!search) return;
+    if (event.key === 'Enter') event.preventDefault();
+    if (event.key === 'Escape' && search.value) {
+        event.preventDefault();
+        event.stopPropagation();
+        search.value = '';
+        showPermGroups(search.closest('[data-permissions]'));
+    }
+}, true);
 
 /*
  * Clickable table rows: a row that has a main link (marked data-row-target: Edit, Open, Payslip…)

@@ -16,10 +16,16 @@ class UserRepository extends Repository
 
     private const WITH = ['medicalRep.territory', 'role.permissionRows', 'extraPermissionRows'];
 
-    /** People for the admin list, active first, with everything the table shows eager-loaded. */
-    public function forAdmin(int $perPage = 25): LengthAwarePaginator
+    /** People for the admin list, active first, with everything the table shows eager-loaded. Search matches name, email or role. */
+    public function forAdmin(int $perPage = 25, string $search = ''): LengthAwarePaginator
     {
-        return $this->paginate($perPage, fn ($q) => $q->with(self::WITH)->orderByDesc('is_active')->orderBy('name'));
+        return $this->paginate($perPage, fn ($q) => $q->with(self::WITH)
+            ->when($search !== '', function ($q) use ($search) {
+                $like = '%'.addcslashes($search, '%_\\').'%';
+                $q->where(fn ($w) => $w->where('name', 'like', $like)->orWhere('email', 'like', $like)
+                    ->orWhereHas('role', fn ($r) => $r->where('name', 'like', $like)));
+            })
+            ->orderByDesc('is_active')->orderBy('name'));
     }
 
     /** One person for the edit form (they may be on another page of the list). */

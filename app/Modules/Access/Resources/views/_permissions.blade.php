@@ -17,15 +17,28 @@
         <p class="m-0 text-[12.5px] text-muted" data-extras-note @if ($isOwnerRole) hidden @endif>Ticks from the role are locked. Tick anything else to give this person an extra permission.</p>
     @endif
 
+    <div class="flex flex-wrap items-center gap-2">
+        <label for="perm-q-{{ $mode }}" class="sr-only">Find a permission</label>
+        <input id="perm-q-{{ $mode }}" type="search" class="field min-w-48 flex-1" placeholder="Find a permission, e.g. invoice" autocomplete="off" data-perm-search>
+        <button type="button" class="link-btn" data-perm-toggle-all>Expand all</button>
+    </div>
+    <p class="m-0 text-[13px] text-muted" data-perm-empty hidden></p>
+
     <div class="perm-groups">
         @foreach (Permission::grouped() as $group => $permissions)
-            <div class="perm-group" data-perm-group>
+            @php $bodyId = 'perm-'.$mode.'-'.$loop->index; @endphp
+            <div class="perm-group" data-perm-group data-open="0">
                 <div class="flex items-center justify-between gap-2">
-                    <span class="text-[13px] font-extrabold">{{ $group }}</span>
+                    <button type="button" class="perm-group-toggle" aria-expanded="false" aria-controls="{{ $bodyId }}" data-perm-group-toggle>
+                        <svg class="perm-chevron" viewBox="0 0 20 20" width="14" height="14" aria-hidden="true"><path d="M7 5l5 5-5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        <span class="perm-group-name">{{ $group }}</span>
+                        <span class="perm-count" data-perm-count></span>
+                    </button>
                     @if ($mode === 'role' && count($permissions) > 1)
                         <button type="button" class="link-btn" data-select-group aria-label="Tick all in {{ $group }}">All</button>
                     @endif
                 </div>
+                <div id="{{ $bodyId }}" class="flex flex-col gap-1" data-perm-group-body hidden>
                 @foreach ($permissions as $p)
                     @php
                         $inherited = $mode === 'person' && ($isOwnerRole || in_array($p->value, $fromRole, true));
@@ -47,6 +60,7 @@
                     {{-- An extra this manager cannot give is kept as it is (disabled boxes are not sent). --}}
                     @if ($locked && $isTicked && ! $inherited)<input type="hidden" name="permissions[]" value="{{ $p->value }}">@endif
                 @endforeach
+                </div>
             </div>
         @endforeach
     </div>

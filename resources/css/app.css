@@ -164,7 +164,16 @@
     .choice input { @apply mt-1 size-4 shrink-0; }
 
     /* Permission checklist, grouped by area */
-    .perm-groups { @apply grid gap-3 sm:grid-cols-2; }
+    .perm-groups { @apply grid items-start gap-3 sm:grid-cols-2; }
+    .perm-group[hidden], .perm[hidden] { display: none; }
+    .perm-group-toggle { @apply -mx-1 flex min-h-8 min-w-0 flex-1 cursor-pointer items-center gap-1.5 rounded-md border-0 bg-transparent px-1 text-left text-ink; }
+    .perm-group-toggle:hover .perm-group-name { text-decoration: underline; }
+    .perm-group-name { @apply text-[13px] font-extrabold; }
+    .perm-chevron { @apply shrink-0 text-muted; transition: transform 150ms ease; }
+    .perm-group-toggle[aria-expanded="true"] .perm-chevron { transform: rotate(90deg); }
+    .perm-count { @apply ml-auto rounded-full bg-mute-soft px-2 py-px text-[11px] font-bold text-mute; }
+    .perm-count[data-some] { @apply bg-info-soft text-info; }
+    @media (prefers-reduced-motion: reduce) { .perm-chevron { transition: none; } }
     .perm-group { @apply flex flex-col gap-1 rounded-[14px] bg-sunk px-3.5 py-3; }
     .perm { @apply flex cursor-pointer items-start gap-2.5 rounded-lg py-1.5 text-[13.5px]; }
     .perm input { @apply mt-0.5 shrink-0; }
