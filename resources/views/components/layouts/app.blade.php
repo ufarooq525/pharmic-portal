@@ -154,9 +154,40 @@
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
             </button>
         </header>
-        <div id="drawer-body" class="flex flex-1 flex-col gap-4 overflow-y-auto p-5"></div>
+        <div id="drawer-body" class="drawer-body flex flex-1 flex-col gap-4 overflow-y-auto p-5"></div>
     </section>
 </div>
-<div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+
+{{-- Placeholder rows shown in the drawer while its form loads --}}
+<template id="drawer-skeleton">
+    <span class="sr-only" role="status">Loading the form…</span>
+    <div class="flex flex-col gap-5" aria-hidden="true">
+        @foreach ([['w-16', 'w-full'], ['w-24', 'w-full'], ['w-20', 'w-2/3'], ['w-28', 'w-full']] as [$label, $field])
+            <div class="flex flex-col gap-2"><span class="skeleton h-3 {{ $label }}"></span><span class="skeleton h-11 {{ $field }}"></span></div>
+        @endforeach
+        <span class="skeleton mt-1 h-11 w-32"></span>
+    </div>
+</template>
+
+{{-- Confirm popup for destructive actions (filled in by app.js from the form's data-confirm text) --}}
+<dialog id="confirm-dialog" class="confirm" aria-labelledby="confirm-title" aria-describedby="confirm-body">
+    <div class="flex flex-col gap-5 p-6">
+        <div class="flex items-start gap-3.5">
+            <span class="flex size-10 flex-none items-center justify-center rounded-full bg-bad-soft text-bad" aria-hidden="true">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5 2.8 19.5h18.4L12 3.5Z"/><path d="M12 10v4M12 17v.01"/></svg>
+            </span>
+            <div class="flex min-w-0 flex-col gap-1.5 pt-1">
+                <h2 id="confirm-title" class="m-0 text-[17px] font-extrabold tracking-[-0.01em]" data-confirm-title></h2>
+                <p id="confirm-body" class="m-0 text-muted [overflow-wrap:anywhere]" data-confirm-body></p>
+            </div>
+        </div>
+        <div class="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+            <button type="button" class="btn" data-confirm-cancel>Keep it</button>
+            <button type="button" class="btn btn-danger" data-confirm-ok>Confirm</button>
+        </div>
+    </div>
+</dialog>
+
+<div id="toasts" class="toasts" aria-live="polite"></div>
 </body>
 </html>

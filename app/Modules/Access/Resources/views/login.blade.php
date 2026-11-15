@@ -28,26 +28,35 @@
         </div>
     </div>
 
-    <x-flash />
+    {{-- Email and password errors sit under their fields; anything else still gets the summary box. --}}
+    <x-flash :summary="collect($errors->keys())->diff(['email', 'password'])->isNotEmpty()" />
 
     <form method="post" action="{{ url('login') }}" class="flex flex-col gap-4">
         @csrf
         <div class="flex flex-col gap-1.5">
             <label for="email" class="label">Email</label>
-            <input id="email" name="email" type="email" value="{{ old('email') }}" autocomplete="username" required autofocus class="field">
+            <input id="email" name="email" type="email" value="{{ old('email') }}" autocomplete="username" required
+                   @error('email') aria-invalid="true" aria-describedby="email-error" @enderror
+                   @if (! $errors->hasAny(['email', 'password']) || $errors->has('email')) autofocus @endif
+                   class="field">
+            @error('email')<p id="email-error" class="field-error">{{ $message }}</p>@enderror
         </div>
         <div class="flex flex-col gap-1.5">
             <label for="password" class="label">Password</label>
             <div class="relative">
-                <input id="password" name="password" type="password" autocomplete="current-password" required class="field pr-12">
+                <input id="password" name="password" type="password" autocomplete="current-password" required
+                       @error('password') aria-invalid="true" aria-describedby="password-error" @enderror
+                       @if (! $errors->has('email') && $errors->has('password')) autofocus @endif
+                       class="field pr-12">
                 <button type="button" data-password-toggle="password" aria-label="Show password" aria-pressed="false"
                         class="absolute inset-y-0 right-0 flex w-12 items-center justify-center rounded-r-xl text-muted hover:text-ink">
                     <svg data-eye="show" aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>
                     <svg data-eye="hide" class="hidden" aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10.6 5.1A10.8 10.8 0 0 1 12 5c6.5 0 10 7 10 7a17.6 17.6 0 0 1-2.4 3.4M6.6 6.6A17.4 17.4 0 0 0 2 12s3.5 7 10 7a10 10 0 0 0 5.4-1.6"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/><path d="m2 2 20 20"/></svg>
                 </button>
             </div>
+            @error('password')<p id="password-error" class="field-error">{{ $message }}</p>@enderror
         </div>
-        <label class="flex items-center gap-2 text-[13px]">
+        <label class="flex min-h-11 items-center gap-2 text-[13px]">
             <input type="checkbox" name="remember" value="1" class="size-4 accent-[var(--sky-accent)]"> Keep me signed in on this device
         </label>
         <button class="btn btn-primary" data-busy-label="Signing in…">Sign in</button>

@@ -45,14 +45,16 @@ document.addEventListener('click', (event) => {
     const input = document.getElementById(button.dataset.passwordToggle);
     const show = input.type === 'password';
     input.type = show ? 'text' : 'password';
+    // The name stays "Show password"; aria-pressed alone says whether it is on.
     button.setAttribute('aria-pressed', String(show));
-    button.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
     button.querySelector('[data-eye="show"]')?.classList.toggle('hidden', show);
     button.querySelector('[data-eye="hide"]')?.classList.toggle('hidden', !show);
     input.focus();
 });
 
-/* Submit buttons lock after the first click, so a slow page can't post twice. */
+/* Submit buttons lock after the first click, so a slow page can't post twice.
+ * They use aria-disabled, not disabled: a disabled button drops keyboard focus to <body>,
+ * and screen reader users lose their place and never hear the busy label. */
 function lockButtons(form, busy) {
     form.querySelectorAll('button:not([type="button"]), input[type="submit"]').forEach((button) => {
         if (busy) {
@@ -62,19 +64,84 @@ function lockButtons(form, busy) {
         } else if (button.dataset.idleLabel !== undefined) {
             button.textContent = button.dataset.idleLabel;
         }
-        button.disabled = busy;
+        if (busy) button.setAttribute('aria-disabled', 'true');
+        else button.removeAttribute('aria-disabled');
     });
     form.toggleAttribute('aria-busy', busy);
 }
 
+/*
+ * Confirm popup for destructive forms (data-confirm="Discard this file? Nothing has been posted.").
+ * The first sentence becomes the title, the rest the explanation, and the form's own button label
+ * ("Revert and remove", "Cancel invoice") becomes the confirm button, so people see exactly what happens.
+ * Focus starts on the safe choice. Falls back to the browser's confirm() where <dialog> is missing.
+ */
+const confirmDialog = document.getElementById('confirm-dialog');
+
+function askConfirm({ title, body = '', ok = 'Confirm', cancel = 'Keep it' }) {
+    if (!confirmDialog?.showModal) return Promise.resolve(window.confirm([title, body].filter(Boolean).join('\n\n')));
+
+    confirmDialog.querySelector('[data-confirm-title]').textContent = title;
+    const bodyEl = confirmDialog.querySelector('[data-confirm-body]');
+    bodyEl.textContent = body;
+    bodyEl.hidden = !body;
+    const okButton = confirmDialog.querySelector('[data-confirm-ok]');
+    const cancelButton = confirmDialog.querySelector('[data-confirm-cancel]');
+    okButton.textContent = ok;
+    cancelButton.textContent = cancel;
+
+    return new Promise((resolve) => {
+        const finish = (answer) => {
+            okButton.removeEventListener('click', onOk);
+            cancelButton.removeEventListener('click', onCancel);
+            confirmDialog.removeEventListener('close', onClose);
+            if (confirmDialog.open) confirmDialog.close();
+            resolve(answer);
+        };
+        const onOk = () => finish(true);
+        const onCancel = () => finish(false);
+        const onClose = () => finish(false); // Escape
+        okButton.addEventListener('click', onOk);
+        cancelButton.addEventListener('click', onCancel);
+        confirmDialog.addEventListener('close', onClose);
+        confirmDialog.showModal();
+        cancelButton.focus();
+    });
+}
+
+function splitQuestion(text) {
+    const at = text.search(/[?.!](\s|$)/);
+    return at === -1 ? { title: text.trim(), body: '' } : { title: text.slice(0, at + 1).trim(), body: text.slice(at + 1).trim() };
+}
+
+// Capture phase, so these run before the upload, drawer and background-save handlers on the form itself.
 document.addEventListener('submit', (event) => {
     const form = event.target;
-    const question = form.dataset.confirm;
 
-    if (question && !window.confirm(question)) {
+    // A busy form ignores further submits (button clicks, Enter in a field, requestSubmit).
+    if (form.hasAttribute('aria-busy')) {
         event.preventDefault();
+        event.stopImmediatePropagation();
         return;
     }
+
+    if (!form.dataset.confirm) return;
+    if (form.dataset.confirmed) { delete form.dataset.confirmed; return; }
+
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    const submitter = event.submitter;
+    const label = submitter?.textContent.trim() || 'Confirm';
+    askConfirm({ ...splitQuestion(form.dataset.confirm), ok: label }).then((yes) => {
+        if (!yes) return;
+        form.dataset.confirmed = '1';
+        submitter && submitter.form === form ? form.requestSubmit(submitter) : form.requestSubmit();
+    });
+}, true);
+
+document.addEventListener('submit', (event) => {
+    const form = event.target;
+
     if (event.defaultPrevented || form.hasAttribute('data-upload')) return;
     if (form.hasAttribute('data-ajax')) {
         event.preventDefault();
@@ -282,15 +349,44 @@ document.addEventListener('click', (event) => {
 });
 syncCollapseButton();
 
-/* Toast */
+/*
+ * Toasts: stack at the bottom, slide in, and leave on their own (errors stay longer).
+ * Hovering or focusing one pauses its timer; the × closes it. The stack is a polite live region,
+ * and an error toast is role="alert" so screen readers announce it straight away.
+ */
+const TOAST_ICONS = {
+    ok: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>',
+    bad: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v5.5M12 16.5v.01"/></svg>',
+};
+
 function toast(message, tone = 'ok') {
-    const box = document.getElementById('toast');
-    if (!box || !message) return;
-    box.textContent = message;
-    box.dataset.tone = tone;
-    box.hidden = false;
-    clearTimeout(box.timer);
-    box.timer = setTimeout(() => { box.hidden = true; }, 4200);
+    const stack = document.getElementById('toasts');
+    if (!stack || !message) return;
+
+    const item = document.createElement('div');
+    item.className = 'toast';
+    item.dataset.tone = tone;
+    if (tone === 'bad') item.setAttribute('role', 'alert');
+    item.innerHTML = `<span class="toast-icon">${TOAST_ICONS[tone] || TOAST_ICONS.ok}</span><span class="min-w-0 flex-1"></span>`
+        + '<button type="button" class="toast-close" aria-label="Dismiss"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>';
+    item.children[1].textContent = message;
+
+    const leave = () => {
+        clearTimeout(item.timer);
+        delete item.dataset.show;
+        setTimeout(() => item.remove(), 220);
+    };
+    const start = () => { clearTimeout(item.timer); item.timer = setTimeout(leave, tone === 'bad' ? 8000 : 4500); };
+    item.querySelector('.toast-close').addEventListener('click', leave);
+    item.addEventListener('mouseenter', () => clearTimeout(item.timer));
+    item.addEventListener('mouseleave', start);
+    item.addEventListener('focusin', () => clearTimeout(item.timer));
+    item.addEventListener('focusout', start);
+
+    stack.appendChild(item);
+    while (stack.children.length > 3) stack.firstElementChild.remove();
+    requestAnimationFrame(() => requestAnimationFrame(() => { item.dataset.show = ''; }));
+    start();
 }
 
 /*
@@ -303,6 +399,63 @@ const drawer = document.getElementById('drawer');
 const drawerBody = document.getElementById('drawer-body');
 const drawerTitle = document.getElementById('drawer-title');
 let drawerReturnFocus = null;
+let drawerDirty = false;
+const reducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+// While the drawer is open the page behind it is inert: Tab stays in the drawer, clicks can't reach the page.
+function setPageInert(inert) {
+    [...document.body.children].forEach((el) => {
+        if (el !== drawer && el.id !== 'toasts' && el !== confirmDialog && el.tagName !== 'SCRIPT') el.inert = inert;
+    });
+}
+
+function showDrawer(title) {
+    drawerTitle.textContent = title || '';
+    drawerDirty = false;
+    if (!drawer.hidden && drawer.hasAttribute('data-open')) return;
+    clearTimeout(drawer.closeTimer);
+    drawer.hidden = false;
+    setPageInert(true);
+    document.body.style.overflow = 'hidden';
+    requestAnimationFrame(() => requestAnimationFrame(() => { drawer.dataset.open = ''; }));
+}
+
+// Placeholder rows while the form is fetched, so the drawer opens at once instead of after the request.
+function drawerLoading() {
+    const skeleton = document.getElementById('drawer-skeleton');
+    drawerBody.replaceChildren(skeleton ? skeleton.content.cloneNode(true) : document.createTextNode('Loading…'));
+    drawerBody.setAttribute('aria-busy', 'true');
+    drawer.querySelector('[data-drawer-close]:not(.drawer-backdrop)')?.focus();
+}
+
+function drawerFailed(link, selector) {
+    drawerBody.removeAttribute('aria-busy');
+    const box = Object.assign(document.createElement('div'), { className: 'flex flex-col items-start gap-3 rounded-[14px] bg-bad-soft px-4 py-4 text-bad' });
+    box.setAttribute('role', 'alert');
+    box.append(
+        Object.assign(document.createElement('p'), { className: 'm-0 font-bold', textContent: 'This form could not be loaded.' }),
+        Object.assign(document.createElement('p'), { className: 'm-0 text-[13px]', textContent: 'Check the connection and try again, or open it as a full page.' }),
+    );
+    const actions = Object.assign(document.createElement('div'), { className: 'flex flex-wrap gap-2' });
+    const retry = Object.assign(document.createElement('button'), { type: 'button', className: 'btn btn-sm', textContent: 'Try again' });
+    retry.addEventListener('click', () => loadDrawer(link, selector));
+    actions.append(retry, Object.assign(document.createElement('a'), { href: link.href, className: 'btn btn-sm', textContent: 'Open full page' }));
+    box.append(actions);
+    drawerBody.replaceChildren(box);
+    retry.focus();
+}
+
+async function loadDrawer(link, selector) {
+    drawerLoading();
+    try {
+        const { response, doc } = await fetchPage(link.href);
+        if (!response.ok) throw new Error(String(response.status));
+        const section = doc.querySelector(selector);
+        section ? openDrawer(section, link.dataset.drawerTitle) : location.assign(link.href);
+    } catch (e) {
+        drawerFailed(link, selector);
+    }
+}
 
 function openDrawer(section, title) {
     const copy = section.cloneNode(true);
@@ -313,21 +466,35 @@ function openDrawer(section, title) {
     copy.querySelectorAll('label[for]').forEach((el) => { el.htmlFor = 'dw-' + el.htmlFor; });
     copy.querySelectorAll('[list]').forEach((el) => el.setAttribute('list', 'dw-' + el.getAttribute('list')));
     const heading = copy.querySelector('h2, .card-title');
-    drawerTitle.textContent = title || heading?.textContent.trim() || '';
+    showDrawer(title || heading?.textContent.trim() || '');
     heading?.remove();
+    drawerBody.removeAttribute('aria-busy');
     drawerBody.replaceChildren(...copy.childNodes);
-    drawer.hidden = false;
-    requestAnimationFrame(() => drawer.dataset.open = '');
-    document.body.style.overflow = 'hidden';
-    drawerBody.querySelector('input:not([type=hidden]), select, textarea')?.focus();
+    drawerBody.classList.remove('drawer-enter');
+    void drawerBody.offsetWidth; // restart the fade-in when content replaces the skeleton
+    drawerBody.classList.add('drawer-enter');
+    drawerBody.querySelector('input:not([type=hidden]), select, textarea')?.focus({ preventScroll: true });
 }
 
-function closeDrawer() {
+// Typing in the drawer marks it as changed, so closing it by accident asks first.
+drawerBody?.addEventListener('input', () => { drawerDirty = true; });
+
+async function closeDrawer({ force = false } = {}) {
     if (!drawer || drawer.hidden) return;
+    if (drawerDirty && !force) {
+        const discard = await askConfirm({ title: 'Discard your changes?', body: 'What you typed in this form has not been saved.', ok: 'Discard changes', cancel: 'Keep editing' });
+        if (!discard) return;
+    }
+    drawerDirty = false;
     delete drawer.dataset.open;
     document.body.style.overflow = '';
-    setTimeout(() => { drawer.hidden = true; drawerBody.replaceChildren(); }, 200);
-    drawerReturnFocus?.focus();
+    setPageInert(false);
+    drawer.closeTimer = setTimeout(() => { drawer.hidden = true; drawerBody.replaceChildren(); }, reducedMotion() ? 0 : 260);
+
+    // The link that opened the drawer may have been replaced by a refresh; fall back to the page heading.
+    let target = drawerReturnFocus?.isConnected ? drawerReturnFocus : document.querySelector('#main h1');
+    if (target && !drawerReturnFocus?.isConnected) target.setAttribute('tabindex', '-1');
+    target?.focus({ preventScroll: true });
 }
 
 async function fetchPage(url, options = {}) {
@@ -336,19 +503,38 @@ async function fetchPage(url, options = {}) {
 }
 
 // Swap in the main content (and sidebar badges) from a freshly loaded page, without a full reload.
+// Where the browser supports view transitions the old and new content cross-fade instead of jumping.
 function swapPage(doc, url) {
     const main = doc.getElementById('main');
     if (!main) { location.assign(url); return; }
-    document.getElementById('main').replaceWith(main);
-    const nav = doc.querySelector('#sidebar nav');
-    if (nav) document.querySelector('#sidebar nav')?.replaceWith(nav);
-    document.title = doc.title;
-    if (url && url !== location.href) history.replaceState(null, '', url);
-    main.querySelectorAll('form[data-upload]').forEach(setupUpload);
+
     const status = main.querySelector('[role=status]');
-    const problem = main.querySelector('[role=alert]');
-    if (status) { toast(status.textContent.trim()); status.remove(); }
-    else if (problem) problem.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    const message = status?.textContent.trim();
+    status?.remove();
+
+    const apply = () => {
+        document.getElementById('main').replaceWith(main);
+        const nav = doc.querySelector('#sidebar nav');
+        if (nav) document.querySelector('#sidebar nav')?.replaceWith(nav);
+        document.title = doc.title;
+        if (url && url !== location.href) history.replaceState(null, '', url);
+        main.querySelectorAll('form[data-upload]').forEach(setupUpload);
+        // The focused button or link may have been replaced; keep keyboard users on the page.
+        if (!document.activeElement || document.activeElement === document.body || !document.activeElement.isConnected) {
+            const heading = main.querySelector('h1');
+            heading?.setAttribute('tabindex', '-1');
+            heading?.focus({ preventScroll: true });
+        }
+    };
+
+    const done = () => {
+        if (message) toast(message);
+        else main.querySelector('[role=alert]')?.scrollIntoView({ block: 'center', behavior: reducedMotion() ? 'auto' : 'smooth' });
+    };
+
+    // Not while the drawer slides out: a view transition would freeze it mid-slide.
+    if (document.startViewTransition && !reducedMotion() && drawer?.hidden !== false) document.startViewTransition(apply).finished.then(done, done);
+    else { apply(); done(); }
 }
 
 document.addEventListener('click', async (event) => {
@@ -367,20 +553,18 @@ document.addEventListener('click', async (event) => {
         return;
     }
 
-    showLoader();
-    try {
-        const { doc } = await fetchPage(link.href);
-        const section = doc.querySelector(selector);
-        section ? openDrawer(section, link.dataset.drawerTitle) : location.assign(link.href);
-    } catch (e) {
-        location.assign(link.href);
-    } finally {
-        hideLoader();
-    }
+    // Open straight away with placeholders, then fill in the form when it arrives.
+    showDrawer(link.dataset.drawerTitle || link.textContent.trim().replace(/\s+/g, ' '));
+    loadDrawer(link, selector);
 });
 
 document.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape') { closeDrawer(); setSidebar(false); }
+    if (event.key !== 'Escape' || confirmDialog?.open) return; // the popup handles its own Escape
+    if (drawer && !drawer.hidden) {
+        // Without this, the same key press would also close the "Discard your changes?" popup it opens.
+        event.preventDefault();
+        closeDrawer();
+    } else setSidebar(false);
 });
 
 // Forms inside the drawer, and forms marked data-ajax, post in the background.
@@ -429,7 +613,7 @@ async function backgroundSubmit(form, inDrawer = false) {
         const problem = doc.querySelector('#main [role=alert]');
         if (problem && !doc.querySelector('#main [role=status]')) return fail(problem.textContent.trim().replace(/\s+/g, ' '));
 
-        if (inDrawer) closeDrawer();
+        if (inDrawer) closeDrawer({ force: true });
         hideLoader();
         swapPage(doc, response.url);
     } catch (e) {
