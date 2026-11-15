@@ -69,17 +69,22 @@
                         <a href="{{ route('invoices.print', $issued) }}" target="_blank" rel="noopener" class="btn btn-primary">Print / save as PDF</a>
                         <a href="{{ whatsapp_url($customer ? null : $distributor->phone, config('pharmic.company')." invoice {$issued->number}\nBill to: {$billTo}\nPeriod: ".$period->format('F Y')."\nUnits ".fmt_num($issued->units).' + bonus '.fmt_num($issued->bonus)."\nTotal: ".fmt_rs($issued->total)) }}" target="_blank" rel="noopener" class="btn">Share on WhatsApp</a>
                         @if ($canCancel && $issued->status === \App\Modules\Billing\Enums\InvoiceStatus::Issued)
-                            <details class="w-full">
-                                <summary class="btn btn-sm cursor-pointer">Cancel with a credit note</summary>
-                                <form method="post" data-ajax action="{{ route('invoices.cancel', $issued) }}" class="mt-3 flex flex-wrap items-end gap-2" data-confirm="Cancel {{ $issued->number }}? A credit note will reverse it in full.">
+                            <a href="#cancel-form" data-drawer="#cancel-form" data-drawer-title="Cancel {{ $issued->number }} with a credit note" class="btn btn-sm">Cancel with a credit note</a>
+                            <section id="cancel-form" class="card" aria-labelledby="cn-h" data-drawer-source>
+                                <h2 id="cn-h" class="card-title">Cancel {{ $issued->number }} with a credit note</h2>
+                                <p class="m-0 text-muted">A credit note reverses {{ $issued->number }} in full ({{ fmt_rs($issued->total) }}). The invoice stays on record marked cancelled, and you can issue a new one for {{ $billTo }}.</p>
+                                <form method="post" action="{{ route('invoices.cancel', $issued) }}" class="grid gap-4" data-confirm="Cancel {{ $issued->number }}? A credit note will reverse it in full.">
                                     @csrf
                                     <div class="flex flex-col gap-1.5">
                                         <label for="cn-reason" class="label">Reason</label>
-                                        <input id="cn-reason" name="reason" required maxlength="255" class="field min-w-[320px]" placeholder="e.g. Import was undone and re-posted">
+                                        <input id="cn-reason" name="reason" required maxlength="255" class="field" placeholder="e.g. Import was undone and re-posted">
                                     </div>
-                                    <button class="btn border-transparent bg-bad text-surface">Cancel invoice</button>
+                                    <div class="flex gap-2">
+                                        <button class="btn border-transparent bg-bad text-surface" data-busy-label="Cancelling…">Cancel invoice</button>
+                                        <button type="button" class="btn" data-drawer-close>Keep it</button>
+                                    </div>
                                 </form>
-                            </details>
+                            </section>
                         @endif
                     @endif
                 </div>

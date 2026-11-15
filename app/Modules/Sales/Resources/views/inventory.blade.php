@@ -110,7 +110,7 @@
                 <fieldset class="m-0 flex flex-col gap-2 border-0 p-0">
                     <legend class="mb-2 font-bold">Or enter by hand</legend>
                     @for ($i = 0; $i < 5; $i++)
-                        <div class="grid gap-2 sm:grid-cols-[minmax(200px,2fr)_120px_140px]">
+                        <div class="grid gap-2 sm:grid-cols-[minmax(200px,2fr)_130px_190px]">
                             <label for="l{{ $i }}-p" class="sr-only">Product {{ $i + 1 }}</label>
                             <select id="l{{ $i }}-p" name="lines[{{ $i }}][product_id]" class="field">
                                 <option value="">Product…</option>

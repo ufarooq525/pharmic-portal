@@ -285,7 +285,9 @@
     .drawer { @apply fixed inset-0 z-[70]; }
     .drawer[hidden] { display: none; }
     .drawer-backdrop { @apply absolute inset-0 bg-black/40 opacity-0; transition: opacity .26s var(--ease-out); backdrop-filter: blur(2px); }
-    .drawer-panel { @apply absolute inset-y-0 right-0 flex w-full max-w-[560px] flex-col bg-surface;
+    /* Wide side panel like Upwork's: about 60% of the screen (560–1000px), full width on phones.
+       container-type lets the forms inside lay out by the panel's width, not the window's. */
+    .drawer-panel { @apply absolute inset-y-0 right-0 flex w-full flex-col bg-surface; max-width: min(100%, max(560px, 60vw), 1000px); container: drawer / inline-size;
         transform: translateX(100%); transition: transform .26s var(--ease-out); box-shadow: -20px 0 60px rgb(0 0 0 / 0.2); }
     .drawer-body { overscroll-behavior: contain; }
     .drawer-enter { animation: fade-up .22s var(--ease-out); }
@@ -383,8 +385,16 @@
 }
 
 /* Unlayered, so it beats the grid utilities: forms inside the drawer stack in one column. */
-.drawer-panel form[class*='grid'] { grid-template-columns: minmax(0, 1fr) !important; }
-.drawer-panel .sm\:col-span-2, .drawer-panel .sm\:col-span-full { grid-column: auto; }
+/* In the wide drawer, forms with columns use two (fields read better than five thin ones); notes and buttons span both.
+   A narrow drawer (phones, small windows) stacks them. */
+@container drawer (min-width: 621px) {
+    .drawer-panel form[class*='grid-cols'] { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+    .drawer-panel form[class*='grid-cols'] > [class*='col-span-full'], .drawer-panel form[class*='grid-cols'] > [class*='col-span-2'] { grid-column: 1 / -1; }
+}
+@container drawer (max-width: 620px) {
+    .drawer-panel form[class*='grid'] { grid-template-columns: minmax(0, 1fr) !important; }
+    .drawer-panel .sm\:col-span-2, .drawer-panel .sm\:col-span-full { grid-column: auto; }
+}
 
 @keyframes page-loader { from { transform: translateX(-100%); } to { transform: translateX(250%); } }
 @keyframes skeleton { from { background-position: 100% 0; } to { background-position: -100% 0; } }

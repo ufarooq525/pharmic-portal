@@ -156,13 +156,13 @@
 <div id="drawer" class="drawer" hidden>
     <div class="drawer-backdrop" data-drawer-close></div>
     <section class="drawer-panel" role="dialog" aria-modal="true" aria-labelledby="drawer-title">
-        <header class="flex items-center justify-between gap-3 border-b border-line px-5 py-4">
+        <header class="flex items-center justify-between gap-3 border-b border-line px-5 py-4 sm:px-8">
             <h2 id="drawer-title" class="m-0 text-[19px] font-extrabold tracking-[-0.01em]"></h2>
             <button type="button" class="icon-btn" data-drawer-close aria-label="Close">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
             </button>
         </header>
-        <div id="drawer-body" class="drawer-body flex flex-1 flex-col gap-4 overflow-y-auto p-5"></div>
+        <div id="drawer-body" class="drawer-body flex flex-1 flex-col gap-4 overflow-y-auto p-5 sm:px-8 sm:py-6"></div>
     </section>
 </div>
 
