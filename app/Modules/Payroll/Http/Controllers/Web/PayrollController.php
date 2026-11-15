@@ -22,6 +22,7 @@ class PayrollController
         return view('payroll::index', [
             'period' => $period,
             'rows' => $this->payroll->month($period),
+            'months' => $this->payroll->months(),
             'canEdit' => $request->user()->can('payroll.adjust'),
             'editing' => $request->integer('edit') ?: null,
         ]);

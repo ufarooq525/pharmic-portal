@@ -286,6 +286,9 @@
     .drawer[data-open] .drawer-backdrop { opacity: 1; }
     .drawer[data-open] .drawer-panel { transform: none; }
     .drawer-panel .card { box-shadow: none; padding: 0; border-radius: 0; }
+    /* Only shown when a page's section opens in the drawer (e.g. the payslip's print link) */
+    .drawer-only { display: none; }
+    .drawer-panel .drawer-only { display: flex; }
     .js [data-drawer-source] { display: none; }
     .toasts { @apply pointer-events-none fixed inset-x-0 bottom-5 z-[80] flex flex-col items-center gap-2 px-4; }
     .toast { @apply pointer-events-auto flex w-full max-w-[440px] items-center gap-3 rounded-2xl bg-bar py-2.5 pr-2 pl-4 font-semibold text-white shadow-lg;

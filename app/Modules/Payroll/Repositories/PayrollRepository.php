@@ -14,6 +14,21 @@ use Illuminate\Support\Facades\DB;
  */
 class PayrollRepository
 {
+    /**
+     * Months that have something to pay: confirmed sales or an adjustment. Newest first.
+     *
+     * @return \Illuminate\Support\Collection<int, CarbonImmutable>
+     */
+    public function months(): \Illuminate\Support\Collection
+    {
+        return DB::table('sale_lines')->select('period')->distinct()->pluck('period')
+            ->merge(PayrollAdjustment::query()->select('period')->distinct()->pluck('period'))
+            ->map(fn ($p) => CarbonImmutable::parse($p)->startOfMonth())
+            ->unique(fn (CarbonImmutable $p) => $p->format('Y-m'))
+            ->sortByDesc(fn (CarbonImmutable $p) => $p->format('Y-m'))
+            ->values();
+    }
+
     /** @return list<array<string, mixed>> */
     public function month(CarbonImmutable $period, ?int $repId = null): array
     {

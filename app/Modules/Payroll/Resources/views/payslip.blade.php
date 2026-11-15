@@ -12,7 +12,12 @@
 </head>
 <body class="mx-auto flex max-w-[800px] flex-col gap-5 p-6">
     <div class="no-print"><button type="button" class="btn btn-primary" onclick="window.print()">Print / save as PDF</button></div>
-    <main class="card gap-5">
+    {{-- #payslip also opens in the payroll page's drawer (no new tab); the first heading becomes the drawer title. --}}
+    <main id="payslip" class="card gap-5">
+        <h2 class="sr-only">Payslip · {{ $rep->name }} · {{ $period->format('F Y') }}</h2>
+        <div class="drawer-only">
+            <a href="{{ request()->fullUrl() }}" target="_blank" rel="noopener" class="btn btn-primary btn-sm">Print / save as PDF</a>
+        </div>
         <div class="flex flex-wrap items-start justify-between gap-4">
             <div class="flex flex-col gap-1">
                 <span class="text-[20px] font-extrabold">{{ config('pharmic.company') }}</span>

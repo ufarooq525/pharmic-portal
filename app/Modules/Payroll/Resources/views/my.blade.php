@@ -1,6 +1,6 @@
 <x-layouts.app title="My territory" description="Your customers, sales, incentive and payslip.">
     <x-page-header :title="$rep->name.' · '.$rep->territory->name" sub="Your customers and confirmed {{ $period->format('F Y') }} sales. A shared customer counts at your share.">
-        <a href="{{ route('payroll.payslip', [$rep, 'period' => $period->format('Y-m')]) }}" target="_blank" rel="noopener" class="btn btn-primary">My payslip</a>
+        <a href="{{ route('payroll.payslip', [$rep, 'period' => $period->format('Y-m')]) }}" data-drawer="#payslip" data-drawer-title="My payslip · {{ $period->format('F Y') }}" class="btn btn-primary">My payslip</a>
     </x-page-header>
 
     <div class="grid grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3.5">
