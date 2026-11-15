@@ -628,7 +628,10 @@ async function backgroundSubmit(form, inDrawer = false) {
         if (inDrawer) closeDrawer({ force: true });
         hideLoader();
         // A save that lands on another page (discard a file → the imports list) is a new history entry.
-        showSoftPage(doc, new URL(response.url), new URL(response.url).pathname !== location.pathname);
+        // Staying on the same page (issue an invoice, link a name): update in place, no fade.
+        const next = new URL(response.url);
+        const samePage = next.pathname === location.pathname;
+        showSoftPage(doc, next, !samePage, samePage);
     } catch (e) {
         fail('Could not save. Check the connection and try again.');
     }
