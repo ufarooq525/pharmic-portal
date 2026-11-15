@@ -164,6 +164,9 @@ window.addEventListener('pageshow', (event) => {
 });
 
 /* Page loader: a bar across the top from the moment a link is clicked until the next page shows. */
+// The page actually shown, with its filters (the address bar only shows the path; see showSoftPage).
+let currentFetch = location.origin + location.pathname + location.search;
+const cleanAddress = (url) => url.pathname + url.hash;
 const loader = document.getElementById('page-loader');
 const fetchPill = document.getElementById('fetch-pill');
 let loaderTimer;
@@ -496,7 +499,9 @@ async function closeDrawer({ force = false } = {}) {
 }
 
 async function fetchPage(url, options = {}) {
-    const response = await fetch(url, { credentials: 'same-origin', ...options, headers: { 'X-Requested-With': 'XMLHttpRequest', ...(options.headers || {}) } });
+    // The address bar shows only the page; the real address (with its filters) goes as the referrer,
+    // so a save that redirects back() returns to the same filtered view.
+    const response = await fetch(url, { credentials: 'same-origin', referrer: currentFetch, ...options, headers: { 'X-Requested-With': 'XMLHttpRequest', ...(options.headers || {}) } });
     return { response, doc: new DOMParser().parseFromString(await response.text(), 'text/html') };
 }
 
@@ -517,7 +522,6 @@ function swapPage(doc, url, afterApply, animate = true) {
         // The month picker and month labels outside the content (sidebar, phone header).
         doc.querySelectorAll('[data-swap]').forEach((el) => document.querySelector(`[data-swap="${el.dataset.swap}"]`)?.replaceWith(el));
         document.title = doc.title;
-        if (url && url !== location.href) history.replaceState(null, '', url);
         main.querySelectorAll('form[data-upload]').forEach(setupUpload);
         afterApply?.(main);
         // The focused button or link may have been replaced; keep keyboard users on the page.
@@ -818,14 +822,16 @@ function isSoftTarget(url, from) {
 }
 
 let softRequest = 0;
-let shownPage = location.pathname + location.search;
 
 // Show the new page: scroll to its #hash, keep the place on the same page, start at the top of a new one.
 function showSoftPage(doc, url, push, quiet = false) {
     // Tabs, page numbers and filters (quiet) keep your place; a new page starts at the top.
     const samePage = quiet || url.pathname === location.pathname;
-    if (push && url.href !== location.href) history.pushState({ soft: true }, '', url.href);
-    shownPage = url.pathname + url.search;
+    // Filters, search, tabs and page numbers stay out of the address bar; the history entry keeps them.
+    const state = { soft: true, fetch: url.origin + url.pathname + url.search };
+    if (push) history.pushState(state, '', cleanAddress(url));
+    else history.replaceState(state, '', cleanAddress(url));
+    currentFetch = state.fetch;
     setSidebar(false);
     swapPage(doc, url.href, (main) => {
         const target = url.hash && main.querySelector('#' + CSS.escape(url.hash.slice(1)));
@@ -864,7 +870,8 @@ document.addEventListener('click', (event) => {
     // getAttribute, not .href: links inside SVG charts have no string .href.
     const url = new URL(a.getAttribute('href'), location.href);
     // Only the #hash differs: let the browser jump to it.
-    if (url.pathname === location.pathname && url.search === location.search && url.hash) return;
+    const shown = new URL(currentFetch);
+    if (url.pathname === shown.pathname && url.search === shown.search && url.hash) return;
     if (!isSoftTarget(url, a)) return;
     event.preventDefault();
     // Tabs, page numbers and links to the same page update the content in place: no fade, no jump.
@@ -886,10 +893,24 @@ document.addEventListener('submit', (event) => {
     softNavigate(url, true, Boolean(form.closest('#main')));
 }, true);
 
-history.replaceState({ soft: true, ...(history.state || {}) }, '', location.href);
+// A page opened with filters in its address (a link from outside, a redirect) shows the clean address too.
+if (document.getElementById('main')) {
+    // Refreshing (F5) keeps the history entry, filters included: show the page with them again.
+    const saved = history.state?.fetch;
+    history.replaceState({ ...(history.state || {}), soft: true, fetch: currentFetch }, '', cleanAddress(new URL(location.href)));
+    if (saved && saved !== currentFetch && new URL(saved).pathname === location.pathname) {
+        const url = new URL(saved);
+        url.hash = location.hash;
+        softNavigate(url, false, true);
+    }
+}
 window.addEventListener('popstate', (event) => {
     // A Back/Forward that only changes the #hash is the browser's own jump.
-    if (event.state?.soft && location.pathname + location.search !== shownPage) softNavigate(new URL(location.href), false);
+    const fetchUrl = event.state?.fetch;
+    if (!event.state?.soft || !fetchUrl || fetchUrl === currentFetch) return;
+    const url = new URL(fetchUrl);
+    url.hash = location.hash;
+    softNavigate(url, false);
 });
 
 /* Live search: results update while you type (after a short pause), without a reload. The box keeps
@@ -929,5 +950,5 @@ document.addEventListener('input', (event) => {
 document.addEventListener('click', (event) => {
     const button = event.target.closest('[data-refresh]');
     if (!button) return;
-    softNavigate(new URL(location.href), false);
+    softNavigate(new URL(currentFetch), false);
 });
