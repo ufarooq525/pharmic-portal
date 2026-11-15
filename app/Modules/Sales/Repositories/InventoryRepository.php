@@ -16,6 +16,56 @@ class InventoryRepository
 {
     public const LOW_STOCK_MONTHS = 1.5;
 
+    /**
+     * One product's stock card for a month: the opening balance, then each movement with a running balance.
+     * Two queries; "opening" matches stockFor() (everything before the month, plus opening entries in it).
+     *
+     * @return array{opening: float, rows: list<array<string, mixed>>, in: float, out: float, closing: float}
+     */
+    public function movements(int $productId, CarbonImmutable $period): array
+    {
+        [$start, $end] = [Period::start($period), Period::end($period)];
+
+        $opening = (float) DB::table('stock_movements')->where('product_id', $productId)
+            ->where(fn ($q) => $q->where('moved_on', '<', $start)->orWhere(fn ($o) => $o->where('type', 'opening')->where('moved_on', '<=', $end)))
+            ->sum('units');
+
+        $balance = $opening;
+        $rows = DB::table('stock_movements as m')
+            ->leftJoin('imports as i', 'i.id', '=', 'm.import_id')
+            ->leftJoin('distributors as d', 'd.id', '=', 'i.distributor_id')
+            ->where('m.product_id', $productId)->where('m.type', '!=', 'opening')
+            ->whereBetween('m.moved_on', [$start, $end])
+            ->orderBy('m.moved_on')->orderBy('m.id')
+            ->get(['m.id', 'm.moved_on', 'm.type', 'm.units', 'm.note', 'm.import_id', 'd.name as distributor'])
+            // One distributor file's sales on a day are one line, not one per customer.
+            ->groupBy(fn ($m) => $m->import_id ? $m->moved_on.'|'.$m->type.'|'.$m->import_id : 'm'.$m->id)
+            ->map(fn ($group) => (object) [
+                'moved_on' => $group->first()->moved_on,
+                'type' => $group->first()->type,
+                'units' => $group->sum(fn ($m) => (float) $m->units),
+                'note' => $group->count() > 1 ? $group->count().' customer lines' : $group->first()->note,
+                'distributor' => $group->first()->distributor,
+            ])
+            ->values()
+            ->map(function ($m) use (&$balance) {
+                $balance += (float) $m->units;
+
+                return [
+                    'date' => CarbonImmutable::parse($m->moved_on),
+                    'type' => \App\Modules\Sales\Enums\StockMovementType::tryFrom($m->type),
+                    'units' => (float) $m->units,
+                    'detail' => collect([$m->distributor, $m->note])->filter()->join(' · '),
+                    'balance' => $balance,
+                ];
+            })->all();
+
+        $in = array_sum(array_map(fn ($r) => max(0, $r['units']), $rows));
+        $out = array_sum(array_map(fn ($r) => max(0, -$r['units']), $rows));
+
+        return ['opening' => $opening, 'rows' => $rows, 'in' => $in, 'out' => $out, 'closing' => $balance];
+    }
+
     /** @return Collection<int, array<string, mixed>> */
     public function stockFor(CarbonImmutable $period): Collection
     {

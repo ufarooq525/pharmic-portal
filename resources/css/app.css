@@ -230,6 +230,12 @@
     .data tfoot tr:first-child td { box-shadow: 0 -6px 0 var(--sky-surface); }
     .data td.r { @apply text-right font-mono whitespace-nowrap; font-variant-numeric: tabular-nums; }
     .data th.r { @apply text-right; }
+    /* Actions column pinned to the right of a wide table, so its buttons stay in view while the table scrolls */
+    .data .sticky-end { position: sticky; right: 0; z-index: 1; background: var(--sky-surface); box-shadow: -10px 0 10px -10px rgb(0 0 0 / 0.18); }
+    .data th.sticky-end { background: var(--sky-head); }
+    .data tfoot td.sticky-end { background: var(--sky-soft); }
+    .data tbody tr:hover > td.sticky-end { background: var(--sky-sunk); }
+    .data tbody tr:has([data-row-target]):hover > td.sticky-end { background: color-mix(in srgb, var(--sky-accent) 6%, var(--sky-sunk)); }
 
     /* Segmented tabs */
     .tabs { @apply inline-flex max-w-full flex-wrap gap-1 self-start rounded-[14px] bg-seg p-1; }

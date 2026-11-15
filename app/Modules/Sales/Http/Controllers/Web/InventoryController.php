@@ -2,6 +2,7 @@
 
 namespace App\Modules\Sales\Http\Controllers\Web;
 
+use App\Modules\Catalog\Models\Product;
 use App\Modules\Catalog\Repositories\ProductRepository;
 use App\Modules\Sales\Repositories\InventoryRepository;
 use App\Modules\Sales\Repositories\StockReceiptRepository;
@@ -22,6 +23,20 @@ class InventoryController
             'receipts' => $receipts->latest(),
             'canReceive' => $request->user()->can('stock.receive'),
             'canRevert' => $request->user()->can('stock.revert'),
+            'canEditRates' => $request->user()->can('products.rates'),
+        ]);
+    }
+
+    /** One product's stock card for the month; opens in the inventory page's drawer. */
+    public function card(Request $request, Product $product, InventoryRepository $inventory): View
+    {
+        $period = Period::fromRequest($request);
+
+        return view('sales::stock-card', [
+            'period' => $period,
+            'product' => $product,
+            'card' => $inventory->movements($product->id, $period),
+            'canReceive' => $request->user()->can('stock.receive'),
             'canEditRates' => $request->user()->can('products.rates'),
         ]);
     }

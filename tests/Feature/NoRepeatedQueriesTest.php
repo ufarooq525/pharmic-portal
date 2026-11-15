@@ -48,7 +48,7 @@ class NoRepeatedQueriesTest extends TestCase
         $import = Import::first()->id;
         $pages = ['/dashboard?period=2026-10', '/imports?period=2026-10', "/imports/$import", '/customers?period=2026-10', '/inventory?period=2026-10',
             '/reports?period=2026-10', '/reports/customers?period=2026-10', "/invoices?period=2026-10&to=d:$irfan", '/invoices/'.\App\Modules\Billing\Models\Invoice::first()->id.'/print', "/ledger?year=2026&distributor=$irfan",
-            '/payroll?period=2026-10', '/payroll/'.$reps[0].'/payslip?period=2026-10', '/products', "/distributors?distributor=$irfan", '/master-data/reps',
+            '/payroll?period=2026-10', '/payroll/'.$reps[0].'/payslip?period=2026-10', '/products', '/inventory/'.$products[0]->id.'/card?period=2026-10', "/distributors?distributor=$irfan", '/master-data/reps',
             '/master-data/name-matching', '/users', '/users?tab=roles', '/activity', '/api/v1/customers', '/api/v1/imports?period=2026-10', '/api/v1/dashboard?period=2026-10', '/api/v1/products'];
         foreach ($pages as $url) {
             $q = [];

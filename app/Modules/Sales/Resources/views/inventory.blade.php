@@ -1,6 +1,7 @@
 @php
     $sum = fn ($k) => $rows->sum($k);
-    $stockPage = \App\Support\Paginate::collection($rows, 25, 'stock_page');
+    $stockPage = \App\Support\Paginate::collection($rows, 10, 'stock_page');
+    $q = ['period' => $period->format('Y-m')];
     $levels = ['out' => ['Out of stock', 'bad'], 'low' => ['Reorder', 'warn'], 'ok' => ['OK', 'ok']];
 @endphp
 <x-layouts.app title="Inventory" description="Stock movement and closing stock for {{ $period->format('F Y') }}.">
@@ -18,7 +19,12 @@
     </div>
 
     <section class="card flex flex-col gap-4" aria-labelledby="inv-h">
-        <h2 id="inv-h" class="card-title card-title-icon"><span class="card-icon" style="--tone: var(--sky-c5)"><x-icon name="warehouse" /></span>Stock by product</h2>
+        <div class="flex flex-wrap items-center justify-between gap-3">
+            <h2 id="inv-h" class="card-title card-title-icon"><span class="card-icon" style="--tone: var(--sky-c5)"><x-icon name="warehouse" /></span>Stock by product</h2>
+            @if ($canReceive)
+                <a href="#receive" data-drawer="#receive" data-drawer-title="Add stock" class="btn btn-primary btn-sm"><x-icon name="plus" :size="16" /> Add stock</a>
+            @endif
+        </div>
         <div class="table-wrap">
             <table class="data">
                 <thead>
@@ -26,6 +32,7 @@
                     <th scope="col">Product</th><th scope="col" class="r">Opening</th><th scope="col" class="r">Received</th><th scope="col" class="r" title="Units sold before returns">Sold (gross)</th><th scope="col" class="r">Bonus</th>
                     <th scope="col" class="r">Returns</th><th scope="col" class="r">Closing</th><th scope="col" class="r">Value at cost</th><th scope="col" class="r">Value at Ex-FP</th>
                     <th scope="col" class="r">Sales tax</th><th scope="col" class="r">WHT</th><th scope="col" class="r">Lasts</th><th scope="col">Stock</th>
+                    <th scope="col" class="sticky-end"><span class="sr-only">Actions</span></th>
                 </tr>
                 </thead>
                 <tbody>
@@ -43,10 +50,16 @@
                         <td class="r"><span class="block">{{ $r['sales_tax_rate'] !== null ? fmt_pct($r['sales_tax_rate']) : '–' }}</span><span class="text-[12px] text-muted">{{ fmt_num($r['sales_tax']) }}</span></td>
                         <td class="r">
                             <span class="block">{{ $r['withholding_tax_rate'] !== null ? fmt_pct($r['withholding_tax_rate']) : '–' }}</span><span class="text-[12px] text-muted">{{ fmt_num($r['withholding_tax']) }}</span>
-                            @if ($canEditRates)<a href="{{ route('products.index', ['period' => $period->format('Y-m'), 'edit' => $r['id']]) }}#rate-form" class="block text-[12px]">Edit</a>@endif
                         </td>
                         <td class="r">{{ $r['cover'] !== null ? fmt_num($r['cover'], 1).' mo' : '–' }}</td>
                         <td><x-chip :tone="$levels[$r['level']][1]">{{ $levels[$r['level']][0] }}</x-chip></td>
+                        <td class="sticky-end whitespace-nowrap text-right">
+                            {{-- Row click opens the stock card; the pencil opens the rate form. Both in the drawer. --}}
+                            <a href="{{ route('inventory.card', [$r['id']] + $q) }}" data-drawer="#stock-card" data-drawer-title="Stock card · {{ $r['name'] }}" class="icon-btn" aria-label="Stock card for {{ $r['name'] }}" title="Stock card" data-row-target><x-icon name="eye" /></a>
+                            @if ($canEditRates)
+                                <a href="{{ route('products.index', $q + ['edit' => $r['id']]) }}#rate-form" data-drawer="#rate-form" data-drawer-title="Rates for {{ $r['name'] }}" class="icon-btn" aria-label="Edit rates and taxes for {{ $r['name'] }}" title="Edit rates and taxes"><x-icon name="pencil" /></a>
+                            @endif
+                        </td>
                     </tr>
                 @endforeach
                 </tbody>
@@ -54,7 +67,7 @@
                 <tr>
                     <td>Total</td><td class="r">{{ fmt_num($sum('opening')) }}</td><td class="r">{{ fmt_num($sum('purchases')) }}</td><td class="r">{{ fmt_num($sum('sold')) }}</td><td class="r">{{ fmt_num($sum('bonus')) }}</td>
                     <td class="r">{{ fmt_num($sum('returned')) }}</td><td class="r">{{ fmt_num($sum('closing')) }}</td><td class="r">{{ fmt_num($sum('value_cost')) }}</td>
-                    <td class="r">{{ fmt_num($sum('value_exfp')) }}</td><td class="r">{{ fmt_num($sum('sales_tax')) }}</td><td class="r">{{ fmt_num($sum('withholding_tax')) }}</td><td></td><td></td>
+                    <td class="r">{{ fmt_num($sum('value_exfp')) }}</td><td class="r">{{ fmt_num($sum('sales_tax')) }}</td><td class="r">{{ fmt_num($sum('withholding_tax')) }}</td><td></td><td></td><td class="sticky-end"></td>
                 </tr>
                 </tfoot>
             </table>
@@ -102,7 +115,7 @@
                             <select id="l{{ $i }}-p" name="lines[{{ $i }}][product_id]" class="field">
                                 <option value="">Product…</option>
                                 @foreach ($products as $p)
-                                    <option value="{{ $p->id }}" @selected(old("lines.$i.product_id") == $p->id)>{{ $p->name }}</option>
+                                    <option value="{{ $p->id }}" @selected(old("lines.$i.product_id", $i === 0 ? request()->integer('product') : null) == $p->id)>{{ $p->name }}</option>
                                 @endforeach
                             </select>
                             <label for="l{{ $i }}-u" class="sr-only">Units {{ $i + 1 }}</label>

@@ -1,9 +1,12 @@
 {{-- Skyline pagination, used for every paginated list (set in AppServiceProvider). --}}
-@if ($paginator->hasPages())
+{{-- The "Showing 1–10 of 42" line shows whenever the list has rows; the page buttons only when there is more than one page. --}}
+@php($hasTotal = method_exists($paginator, 'total'))
+@if ($paginator->hasPages() || ($hasTotal && $paginator->total() > 0))
     <nav class="flex flex-wrap items-center justify-between gap-3 pt-1" aria-label="Pages">
         <span class="text-[13px] text-muted">
             Showing <b class="num text-ink">{{ $paginator->firstItem() }}–{{ $paginator->lastItem() }}</b> of <b class="num text-ink">{{ $paginator->total() }}</b>
         </span>
+        @if ($paginator->hasPages())
         <ul class="m-0 flex list-none flex-wrap items-center gap-1 p-0">
             <li>
                 @if ($paginator->onFirstPage())
@@ -36,5 +39,6 @@
                 @endif
             </li>
         </ul>
+        @endif
     </nav>
 @endif

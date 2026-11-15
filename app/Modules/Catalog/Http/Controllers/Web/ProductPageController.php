@@ -29,7 +29,8 @@ class ProductPageController
     {
         $rate = $add->handle($product, $request->validated());
 
-        return redirect()->route('products.index', ['period' => $request->query('period')])
+        // Back to where the rate was changed (Products, or the Inventory drawer).
+        return redirect()->back(302, [], route('products.index', ['period' => $request->query('period')]))
             ->with('status', "{$product->name}: new rates apply from ".$rate->effective_from->format('j M Y').'.');
     }
 }

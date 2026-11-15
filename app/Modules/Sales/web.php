@@ -12,6 +12,7 @@ Route::get('dashboard', DashboardPageController::class)->middleware(['auth', 'ho
 
 Route::middleware('auth')->group(function () {
     Route::get('inventory', [InventoryController::class, 'index'])->middleware('permission:stock.view')->name('inventory.index');
+    Route::get('inventory/{product}/card', [InventoryController::class, 'card'])->middleware('permission:stock.view')->name('inventory.card');
     Route::middleware('permission:dashboard.view')->group(function () {
         Route::get('reports/{type?}', [ReportController::class, 'show'])->whereIn('type', ReportType::values())->name('reports.show');
         Route::get('reports/{type}/export', [ReportController::class, 'export'])->whereIn('type', ReportType::values())->name('reports.export');
