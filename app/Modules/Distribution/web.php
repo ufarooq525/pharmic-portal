@@ -16,9 +16,18 @@ Route::middleware('auth')->prefix('distributors')->name('distributors.')->group(
     Route::delete('{distributor}/aliases/{alias}', [DistributorPageController::class, 'unlink'])->middleware('permission:distributors.unlink')->name('unlink');
 });
 
+// Medical reps have their own page; name matching is a tab of Distributors. (Both were under "Master data".)
 Route::middleware('auth')->controller(MasterDataController::class)->group(function () {
-    Route::get('master-data/reps', 'reps')->middleware('permission:reps.view')->name('reps.index');
-    Route::post('master-data/reps', 'storeRep')->middleware('permission:reps.edit')->name('reps.store');
-    Route::put('master-data/reps/{rep}', 'updateRep')->middleware('permission:reps.edit')->name('reps.update');
-    Route::get('master-data/name-matching', 'aliases')->middleware('permission:distributors.view')->name('aliases.index');
+    Route::get('medical-reps', 'reps')->middleware('permission:reps.view')->name('reps.index');
+    Route::post('medical-reps', 'storeRep')->middleware('permission:reps.edit')->name('reps.store');
+    Route::put('medical-reps/{rep}', 'updateRep')->middleware('permission:reps.edit')->name('reps.update');
+    Route::get('distributors/name-matching', 'aliases')->middleware('permission:distributors.view')->name('aliases.index');
+});
+
+// Old addresses keep working.
+Route::middleware('auth')->group(function () {
+    $keepQuery = fn (\Illuminate\Http\Request $r, string $to) => redirect()->to($to.($r->getQueryString() ? '?'.$r->getQueryString() : ''), 301);
+    Route::get('master-data/reps', fn (\Illuminate\Http\Request $r) => $keepQuery($r, '/medical-reps'));
+    Route::get('master-data/name-matching', fn (\Illuminate\Http\Request $r) => $keepQuery($r, '/distributors/name-matching'));
+    Route::get('master-data', fn () => redirect('/distributors', 301));
 });

@@ -96,7 +96,7 @@
             </table>
         </div>
         {{ $page->links() }}
-        <p class="m-0 text-[12px] text-muted">Incentive is each product’s incentive % on the Ex-FP value of confirmed sales to the rep’s customers. Base salaries and phone numbers are set under Master data → Medical reps.</p>
+        <p class="m-0 text-[12px] text-muted">Incentive is each product’s incentive % on the Ex-FP value of confirmed sales to the rep’s customers. Base salaries and phone numbers are set under Setup → Medical reps.</p>
     </section>
 
     @if ($canEdit && ($row = $r->first(fn ($x) => $x['rep']->id === $editing)))

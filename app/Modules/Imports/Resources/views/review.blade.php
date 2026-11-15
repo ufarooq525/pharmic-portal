@@ -92,55 +92,48 @@
         <x-kpi label="Withholding tax" :value="fmt_rs($t['withholding_tax'])" />
     </div>
 
-    <section class="card" aria-labelledby="cust-h">
+    <section id="customers" class="card scroll-mt-4" aria-labelledby="cust-h">
         <div class="flex flex-wrap items-center justify-between gap-3">
             <h2 id="cust-h" class="card-title card-title-icon"><span class="card-icon" style="--tone: var(--sky-c1)"><x-icon name="store" /></span>Customer-wise data</h2>
             <nav class="flex flex-wrap gap-1.5" aria-label="Filter customers">
-                <a href="{{ request()->fullUrlWithQuery(['show' => null]) }}" class="pill" @if (! $attentionOnly) aria-current="page" @endif>All · {{ count($customers) }}</a>
-                <a href="{{ request()->fullUrlWithQuery(['show' => 'attention']) }}" class="pill" @if ($attentionOnly) aria-current="page" @endif>Needs attention · {{ $attention }}</a>
+                <a href="{{ request()->fullUrlWithQuery(['show' => null, 'customers_page' => null]) }}" class="pill" @if (! $attentionOnly) aria-current="page" @endif>All · {{ count($customers) }}</a>
+                <a href="{{ request()->fullUrlWithQuery(['show' => 'attention', 'customers_page' => null]) }}" class="pill" @if ($attentionOnly) aria-current="page" @endif>Needs attention · {{ $attention }}</a>
             </nav>
         </div>
 
         <div class="table-wrap">
-            <div class="min-w-[880px]">
-                <div class="grid grid-cols-[minmax(220px,2.3fr)_minmax(150px,1.3fr)_70px_70px_110px_90px_90px_130px] gap-3 rounded-xl bg-head px-3 py-2.5 text-[12px] font-bold text-muted" aria-hidden="true">
-                    <span>Customer</span><span>Medical rep</span><span class="text-right">Units</span><span class="text-right">Bonus</span><span class="text-right">Value Rs</span><span class="text-right">Sales tax</span><span class="text-right">WHT</span><span>Status</span>
-                </div>
+            <table class="data">
+                <thead>
+                <tr>
+                    <th scope="col">Customer</th><th scope="col">Medical rep</th><th scope="col" class="r">Units</th><th scope="col" class="r">Bonus</th>
+                    <th scope="col" class="r">Value Rs</th><th scope="col" class="r">Sales tax</th><th scope="col" class="r">WHT</th><th scope="col">Status</th>
+                    <th scope="col" class="sticky-end"><span class="sr-only">View</span></th>
+                </tr>
+                </thead>
+                <tbody>
                 @forelse ($shown as $c)
-                    <details class="group border-b border-hair">
-                        <summary class="grid cursor-pointer list-none grid-cols-[minmax(220px,2.3fr)_minmax(150px,1.3fr)_70px_70px_110px_90px_90px_130px] items-center gap-3 rounded-xl px-3 py-[11px] hover:bg-sunk group-open:bg-soft [&::-webkit-details-marker]:hidden">
-                            <span class="min-w-0"><span class="block font-bold">{{ $c['name'] }}</span><span class="text-[12px] text-muted">{{ $c['code'] ? 'Code '.$c['code'].' · ' : '' }}{{ $c['area'] ?: 'No area' }}</span></span>
-                            <span class="text-[13px] {{ $c['reps'] ? '' : 'text-warn' }}">{{ $c['reps'] ?: 'Not assigned' }}</span>
-                            <span class="num text-right">{{ fmt_num($c['units']) }}</span>
-                            <span class="num text-right">{{ fmt_num($c['bonus']) }}</span>
-                            <span class="num text-right">{{ fmt_num($c['value']) }}</span>
-                            <span class="num text-right">{{ fmt_num($c['sales_tax']) }}</span>
-                            <span class="num text-right">{{ fmt_num($c['withholding_tax']) }}</span>
-                            <span><x-chip :tone="$c['tone']">{{ $c['status'] }}</x-chip></span>
-                        </summary>
-                        <div class="mb-2 rounded-xl bg-sunk py-1 pl-7 pr-3">
-                            @forelse ($c['lines'] as $l)
-                                <div class="grid grid-cols-[minmax(170px,1.5fr)_minmax(140px,1.3fr)_60px_60px_100px_120px_120px_minmax(150px,1.3fr)] gap-3 border-b border-hair py-2 text-[13px] last:border-0 {{ $l['product'] ? '' : 'text-bad' }}">
-                                    <span class="font-mono text-[12px]">{{ $l['code_in_file'] ? $l['code_in_file'].' · ' : '' }}{{ $l['name_in_file'] }}</span>
-                                    <span class="font-semibold">{{ $l['product'] ?? 'Not linked' }}</span>
-                                    <span class="num text-right">{{ fmt_num($l['units']) }}</span>
-                                    <span class="num text-right">{{ fmt_num($l['bonus']) }}</span>
-                                    <span class="num text-right">{{ fmt_num($l['value']) }}</span>
-                                    <span class="num text-right">{{ $l['sales_tax_rate'] !== null ? 'ST '.fmt_pct($l['sales_tax_rate']).' · '.fmt_num($l['sales_tax']) : '–' }}</span>
-                                    <span class="num text-right">{{ $l['withholding_tax_rate'] !== null ? 'WHT '.fmt_pct($l['withholding_tax_rate']).' · '.fmt_num($l['withholding_tax']) : '–' }}</span>
-                                    <span class="text-[12px] text-muted">{{ $l['note'] }}</span>
-                                </div>
-                            @empty
-                                <p class="py-2 text-[13px] text-muted">Listed in the file with no product lines.</p>
-                            @endforelse
-                        </div>
-                    </details>
+                    <tr>
+                        <td class="min-w-[200px]"><span class="block font-bold">{{ $c['name'] }}</span><span class="text-[12px] text-muted">{{ $c['code'] ? 'Code '.$c['code'].' · ' : '' }}{{ $c['area'] ?: 'No area' }}</span></td>
+                        <td class="text-[13px] {{ $c['reps'] ? '' : 'text-warn' }}">{{ $c['reps'] ?: 'Not assigned' }}</td>
+                        <td class="r">{{ fmt_num($c['units']) }}</td>
+                        <td class="r">{{ fmt_num($c['bonus']) }}</td>
+                        <td class="r">{{ fmt_num($c['value']) }}</td>
+                        <td class="r">{{ fmt_num($c['sales_tax']) }}</td>
+                        <td class="r">{{ fmt_num($c['withholding_tax']) }}</td>
+                        <td><x-chip :tone="$c['tone']">{{ $c['status'] }}</x-chip></td>
+                        <td class="sticky-end text-right">
+                            {{-- Opens the customer's lines next to the PDF at that customer's page --}}
+                            <a href="{{ route('imports.customer', [$import, $c['index']]) }}" data-drawer="#customer-card" data-drawer-title="{{ $c['name'] }}" class="icon-btn" aria-label="View {{ $c['name'] }} with the PDF" title="View with the PDF" data-row-target><x-icon name="eye" /></a>
+                        </td>
+                    </tr>
                 @empty
-                    <x-empty class="mt-2">Every customer in this file is ready.</x-empty>
+                    <tr><td colspan="9"><x-empty>Every customer in this file is ready.</x-empty></td></tr>
                 @endforelse
-            </div>
+                </tbody>
+            </table>
         </div>
-        <p class="text-[12px] text-muted">Click a customer to see its product lines. Bonus: {{ lcfirst($bonusSource->label()) }} (<a href="{{ route('distributors.index', ['distributor' => $import->distributor_id]) }}">change</a>). Taxes use each product’s rates for {{ $period->format('F Y') }}.</p>
+        {{ $shown->links() }}
+        <p class="text-[12px] text-muted">Click a customer to see its product lines next to the PDF. Bonus: {{ lcfirst($bonusSource->label()) }} (<a href="{{ route('distributors.index', ['distributor' => $import->distributor_id]) }}">change</a>). Taxes use each product’s rates for {{ $period->format('F Y') }}.</p>
     </section>
 
     <div class="action-bar">

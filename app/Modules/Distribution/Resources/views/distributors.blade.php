@@ -3,8 +3,9 @@
     $layouts = \App\Modules\Imports\Enums\ReportLayout::options();
     $bonusSources = \App\Modules\Distribution\Enums\BonusSource::options();
 @endphp
-<x-layouts.app title="Master data · Distributors" description="Each distributor's file format: report layout, header name, bonus source and product spellings.">
-    <x-masters-tabs current="distributors" />
+<x-layouts.app title="Distributors" description="Each distributor's file format: report layout, header name, bonus source and product spellings.">
+    <x-page-header title="Distributors" sub="Each distributor’s profile and how its monthly file is laid out, so imports read it correctly." />
+    <x-page-tabs page="distributors" current="profiles" />
 
     <div class="flex flex-wrap items-start gap-5">
         <nav aria-label="Distributors" class="flex w-full max-w-[320px] flex-[1_1_250px] flex-col gap-1 rounded-[20px] bg-surface p-2.5 shadow-[var(--sky-shadow)]">

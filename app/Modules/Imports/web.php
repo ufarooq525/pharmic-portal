@@ -9,6 +9,8 @@ Route::middleware('auth')->prefix('imports')->name('imports.')->controller(Impor
         Route::get('review', 'review')->name('review');
         Route::get('{import}', 'show')->whereNumber('import')->name('show');
         Route::get('{import}/file', 'file')->name('file');
+        Route::get('{import}/view', 'view')->name('view');
+        Route::get('{import}/customers/{index}', 'customer')->whereNumber('index')->name('customer');
     });
 
     // Uploading and fixing a file, confirming it (posts to stock) and undoing it are separate permissions.

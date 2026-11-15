@@ -12,7 +12,7 @@ use Illuminate\View\View;
 
 class InventoryController
 {
-    public function index(Request $request, InventoryRepository $inventory, StockReceiptRepository $receipts, ProductRepository $products): View
+    public function index(Request $request, InventoryRepository $inventory, ProductRepository $products): View
     {
         $period = Period::fromRequest($request);
 
@@ -20,10 +20,19 @@ class InventoryController
             'period' => $period,
             'rows' => $inventory->stockFor($period),
             'products' => $products->active(['id', 'name', 'code']),
-            'receipts' => $receipts->latest(),
             'canReceive' => $request->user()->can('stock.receive'),
             'canRevert' => $request->user()->can('stock.revert'),
             'canEditRates' => $request->user()->can('products.rates'),
+        ]);
+    }
+
+    /** Inventory → Stock receipts tab. */
+    public function receipts(Request $request, StockReceiptRepository $receipts): View
+    {
+        return view('sales::receipts', [
+            'period' => Period::fromRequest($request),
+            'receipts' => $receipts->latest(),
+            'canRevert' => $request->user()->can('stock.revert'),
         ]);
     }
 

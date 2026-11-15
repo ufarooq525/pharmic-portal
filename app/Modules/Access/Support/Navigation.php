@@ -23,25 +23,34 @@ class Navigation
             ['customers.index', 'Customers', ['customers.*'], P::CustomersView, null],
         ],
         'Stock & money' => [
-            ['inventory.index', 'Inventory', ['inventory.*'], P::StockView, null],
+            ['tabs:inventory', 'Inventory', ['inventory.*', 'products.*'], null, null],
             ['reports.show', 'Reports', ['reports.*'], P::DashboardView, null],
             ['invoices.index', 'Invoices', ['invoices.*'], P::InvoicesView, null],
             ['ledger.index', 'Distributor ledger', ['ledger.*'], P::LedgerView, null],
             ['payroll.index', 'MR payroll', ['payroll.*'], P::PayrollView, null],
         ],
         'Setup' => [
-            ['master-data', 'Master data', ['products.*', 'distributors.*', 'reps.*', 'aliases.*'], null, null],
+            ['tabs:distributors', 'Distributors', ['distributors.*', 'aliases.*'], null, null],
+            ['reps.index', 'Medical reps', ['reps.*'], P::RepsView, null],
             ['users.index', 'Users & roles', ['users.*'], P::UsersManage, null],
             ['activity.index', 'Activity log', ['activity.*'], P::ActivityView, null],
         ],
     ];
 
-    /** Master data tabs, in order: [key, route, label, permission]. */
-    public const MASTER_TABS = [
-        ['products', 'products.index', 'Products & taxes', P::ProductsView],
-        ['distributors', 'distributors.index', 'Distributors & formats', P::DistributorsView],
-        ['reps', 'reps.index', 'Medical reps', P::RepsView],
-        ['aliases', 'aliases.index', 'Name matching', P::DistributorsView],
+    /**
+     * Pages with tabs, in order: [key, route, label, permission]. The sidebar item opens the first tab
+     * the person can see, and shows only if they can see at least one.
+     */
+    public const TABS = [
+        'inventory' => [
+            ['stock', 'inventory.index', 'Stock', P::StockView],
+            ['products', 'products.index', 'Products & prices', P::ProductsView],
+            ['receipts', 'inventory.receipts.index', 'Stock receipts', P::StockView],
+        ],
+        'distributors' => [
+            ['profiles', 'distributors.index', 'Profiles & file formats', P::DistributorsView],
+            ['aliases', 'aliases.index', 'Name matching', P::DistributorsView],
+        ],
     ];
 
     /** @return array<string|int, list<array{0:string,1:string,2:list<string>,3:?string}>> group => [route, label, patterns, badge key] */
@@ -54,8 +63,8 @@ class Navigation
         $groups = [];
         foreach (self::GROUPS as $group => $items) {
             foreach ($items as [$route, $label, $patterns, $permission, $badge]) {
-                if ($route === 'master-data') {
-                    $route = self::masterTabs($user)[0][1] ?? null;
+                if (str_starts_with($route, 'tabs:')) {
+                    $route = self::tabs(substr($route, 5), $user)[0][1] ?? null;
                 } elseif (! $user->hasPermission($permission)) {
                     $route = null;
                 }
@@ -68,10 +77,10 @@ class Navigation
         return $groups;
     }
 
-    /** The master data tabs this person can open. */
-    public static function masterTabs(User $user): array
+    /** The tabs of a page ("inventory", "distributors") this person can open. */
+    public static function tabs(string $page, User $user): array
     {
-        return array_values(array_filter(self::MASTER_TABS, fn ($t) => $user->hasPermission($t[3])));
+        return array_values(array_filter(self::TABS[$page] ?? [], fn ($t) => $user->hasPermission($t[3])));
     }
 
     /** Route name of the page to land on after signing in, or null if they can open nothing. */

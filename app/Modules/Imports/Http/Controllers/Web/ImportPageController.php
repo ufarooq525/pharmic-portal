@@ -15,6 +15,7 @@ use App\Modules\Imports\Http\Requests\RevertImportRequest;
 use App\Modules\Imports\Http\Requests\StoreImportRequest;
 use App\Modules\Imports\Http\Resources\ImportReadResource;
 use App\Modules\Imports\Models\Import;
+use App\Modules\Imports\Parsers\PdfText;
 use App\Modules\Imports\Repositories\ImportRepository;
 use App\Modules\Imports\Repositories\ImportReviewRepository;
 use App\Support\Period;
@@ -23,6 +24,7 @@ use DomainException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 use RuntimeException;
@@ -91,7 +93,8 @@ class ImportPageController
             'import' => $import,
             'period' => CarbonImmutable::parse($import->period),
             'attentionOnly' => $attentionOnly,
-            'shown' => $attentionOnly ? array_values(array_filter($data['customers'], fn ($c) => $c['attention'])) : $data['customers'],
+            // 50 customers a page: a file can list hundreds. The checks and totals above still cover the whole file.
+            'shown' => \App\Support\Paginate::collection($attentionOnly ? array_values(array_filter($data['customers'], fn ($c) => $c['attention'])) : $data['customers'], 50, 'customers_page', 'customers'),
             'products' => $products->active(['id', 'name']),
             'canMap' => $user->can('imports.upload') && ! $import->isConfirmed(),
             'canConfirm' => $user->can('imports.confirm') && $import->status === ImportStatus::NeedsReview && $data['unmapped'] === [],
@@ -168,6 +171,65 @@ class ImportPageController
         $this->guard($request, $import);
 
         return Storage::download($import->file_path, $import->original_name);
+    }
+
+    /**
+     * One customer of the file, for the review drawer: its lines as read, and the PDF opened at the
+     * page that customer is on, so the reviewer can match them side by side.
+     */
+    public function customer(Request $request, Import $import, int $index, ImportReviewRepository $review): View
+    {
+        $this->guard($request, $import);
+        $import->load('distributor');
+        $customer = collect($review->build($import)['customers'])->firstWhere('index', $index);
+        abort_unless($customer, 404);
+
+        return view('imports::customer', [
+            'import' => $import,
+            'customer' => $customer,
+            'page' => $this->pageOf($import, $customer),
+            'hasFile' => Storage::exists($import->file_path),
+        ]);
+    }
+
+    /** The PDF shown inside the page (the drawer); only this site may frame it. */
+    public function view(Request $request, Import $import): \Symfony\Component\HttpFoundation\Response
+    {
+        $this->guard($request, $import);
+        abort_unless(Storage::exists($import->file_path), 404);
+
+        return Storage::response($import->file_path, $import->original_name, [
+            'Content-Type' => 'application/pdf',
+            'X-Frame-Options' => 'SAMEORIGIN',
+            'Cache-Control' => 'private, max-age=600',
+        ], 'inline');
+    }
+
+    /**
+     * The page a customer appears on (by its code, otherwise its name), or null. The page text is read
+     * once per file and kept for a day; a file that can't be read just opens on page 1.
+     */
+    private function pageOf(Import $import, array $customer): ?int
+    {
+        $normal = fn (string $s) => preg_replace('/\s+/', ' ', mb_strtolower($s));
+        $pages = Cache::remember("import:{$import->id}:pages", now()->addDay(), function () use ($import, $normal) {
+            try {
+                return Storage::exists($import->file_path) ? array_map($normal, PdfText::pages(Storage::path($import->file_path))) : [];
+            } catch (RuntimeException) {
+                return [];
+            }
+        });
+
+        foreach (array_filter([$customer['code'] ?? null, $customer['name'] ?? null]) as $needle) {
+            $needle = $normal((string) $needle);
+            foreach ($pages as $i => $text) {
+                if ($needle !== '' && preg_match('/(?<![\p{L}\d])'.preg_quote($needle, '/').'(?![\p{L}\d])/u', $text)) {
+                    return $i + 1;
+                }
+            }
+        }
+
+        return null;
     }
 
     /** A user limited to some distributors cannot open another distributor's file. */

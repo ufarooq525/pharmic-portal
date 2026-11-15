@@ -1,5 +1,6 @@
-<x-layouts.app title="Master data · Name matching" description="How each distributor spells and codes each product in its PDF.">
-    <x-masters-tabs current="aliases" />
+<x-layouts.app title="Distributors · Name matching" description="How each distributor spells and codes each product in its PDF.">
+    <x-page-header title="Distributors" sub="How each distributor spells and codes your products in its file. A name is linked once on the review screen and recognised in every later file." />
+    <x-page-tabs page="distributors" current="aliases" />
 
     <section class="card" aria-labelledby="al-h">
         <div class="flex flex-wrap items-end justify-between gap-3">

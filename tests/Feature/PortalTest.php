@@ -112,15 +112,20 @@ class PortalTest extends TestCase
         $this->get('/imports/'.Import::first()->id)->assertOk()->assertSee('ZAMAN MEDICAL STORE');
         $this->get('/customers?period=2026-10')->assertOk()->assertSee('ZAMAN MEDICAL STORE');
         $this->get('/inventory?period=2026-10')->assertOk()->assertSee('Gynofol Tab');
-        $this->get('/products?period=2026-10')->assertOk()->assertSee('withholding tax rate');
+        $this->get('/inventory/products?period=2026-10')->assertOk()->assertSee('withholding tax rate');
         $this->get('/users')->assertOk()->assertSee('Which distributors they see')->assertSee('What they can do');
         $this->get('/users?tab=roles')->assertOk()->assertSee('Data entry')->assertSee('What this role can do');
         $this->get('/users?tab=roles&role='.\App\Modules\Access\Models\Role::where('name', 'Accounts')->value('id'))->assertOk()->assertSee('Edit Accounts');
         $this->get('/invoices?period=2026-10&to=d:'.Distributor::where('name', 'Irfan Enterprises')->value('id'))->assertOk()->assertSee('Gynofol Tab')->assertSee('Issue invoice');
         $this->get('/payroll?period=2026-10')->assertOk()->assertSee('Uzma Bibi');
         $this->get('/activity')->assertOk()->assertSee('Who did what and when');
-        $this->get('/master-data/reps')->assertOk()->assertSee('Uzma Bibi');
-        $this->get('/master-data/name-matching')->assertOk()->assertSee('GYNOF OL TAB (N)');
+        $this->get('/medical-reps')->assertOk()->assertSee('Uzma Bibi');
+        $this->get('/distributors/name-matching')->assertOk()->assertSee('GYNOF OL TAB (N)');
+        $this->get('/inventory/receipts?period=2026-10')->assertOk()->assertSee('Stock receipts');
+        // Old Master data addresses still work.
+        $this->get('/products?period=2026-10')->assertRedirect('/inventory/products?period=2026-10');
+        $this->get('/master-data/reps')->assertRedirect('/medical-reps');
+        $this->get('/master-data/name-matching?distributor=1')->assertRedirect('/distributors/name-matching?distributor=1');
         $this->get('/ledger?year=2026&distributor='.Distributor::where('name', 'Irfan Enterprises')->value('id'))->assertOk()->assertSee('Invoice for October 2026')->assertSee('Balances for October 2026');
         $this->get('/distributors?distributor='.Distributor::where('name', 'Irfan Enterprises')->value('id'))->assertOk()
             ->assertSee('IRFAN ENTERPRISES')->assertSee('GYNOFOL TAB')->assertSee('955');
@@ -394,5 +399,31 @@ class PortalTest extends TestCase
         $this->assertSame(0, Customer::count());
         $this->actingAs(User::factory()->role('accounts')->create())->post("/imports/{$import->id}/confirm")->assertRedirect();
         $this->assertSame(2, SaleLine::count());
+    }
+
+    public function test_a_review_customer_opens_with_its_lines_and_the_pdf_this_site_alone_may_frame(): void
+    {
+        \Illuminate\Support\Facades\Storage::fake('local');
+        $import = $this->import(withUnknownProduct: true);
+        \Illuminate\Support\Facades\Storage::put($import->file_path, '%PDF-1.4 test');
+        $this->actingAs($this->owner());
+
+        $this->get("/imports/{$import->id}")->assertOk()->assertSee(route('imports.customer', [$import, 0]), false);
+        $this->get("/imports/{$import->id}/customers/0")->assertOk()
+            ->assertSee('ZAMAN MEDICAL STORE')->assertSee('GYNOFOL TAB')->assertSee('EQUAT FLORA')->assertSee('Not linked')
+            ->assertSee(route('imports.view', $import), false);
+        $this->get("/imports/{$import->id}/customers/9")->assertNotFound();
+
+        $pdf = $this->get("/imports/{$import->id}/view")->assertOk()->assertHeader('Content-Type', 'application/pdf')->assertHeader('X-Frame-Options', 'SAMEORIGIN');
+        $this->assertStringStartsWith('inline', $pdf->headers->get('Content-Disposition'));
+        $this->assertSame("frame-ancestors 'self'", $pdf->headers->get('Content-Security-Policy'));
+        // Every other page still refuses to be framed.
+        $this->get('/dashboard')->assertHeader('X-Frame-Options', 'DENY');
+
+        // Someone limited to another distributor can't open it.
+        $other = Distributor::where('name', '!=', 'Irfan Enterprises')->value('id');
+        $limited = User::factory()->role('accounts')->create(['distributor_ids' => [$other]]);
+        $this->actingAs($limited)->get("/imports/{$import->id}/customers/0")->assertForbidden();
+        $this->actingAs($limited)->get("/imports/{$import->id}/view")->assertForbidden();
     }
 }

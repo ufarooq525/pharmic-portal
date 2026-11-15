@@ -15,6 +15,16 @@ final class PdfText
     }
 
     /**
+     * The text of each page (pdftotext separates pages with a form feed). Page 1 is index 0.
+     *
+     * @return list<string>
+     */
+    public static function pages(string $path): array
+    {
+        return explode("\f", rtrim(self::layout($path), "\f"));
+    }
+
+    /**
      * Words with their position on the page, grouped into visual lines.
      *
      * @return list<list<list<array{x0: float, x1: float, top: float, text: string}>>> pages -> lines -> words

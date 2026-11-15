@@ -29,7 +29,7 @@ class ImportReviewRepository
         $totals = ['units' => 0, 'bonus' => 0, 'value' => 0, 'sales_tax' => 0, 'withholding_tax' => 0];
         $customers = [];
 
-        foreach ($import->customers as $c) {
+        foreach ($import->customers as $index => $c) {
             $key = Customer::matchKey($c['code'] ?? null, $c['name'], $c['area'] ?? null);
             $known = $register->get($key);
             $flags = [];
@@ -86,7 +86,7 @@ class ImportReviewRepository
             };
 
             $customers[] = $sum + [
-                'name' => $c['name'], 'code' => $c['code'] ?? null, 'area' => $c['area'] ?? null,
+                'index' => $index, 'name' => $c['name'], 'code' => $c['code'] ?? null, 'area' => $c['area'] ?? null,
                 'reps' => $reps->map(fn ($r) => $r->name.($r->pivot->share_percent < 100 ? " ({$r->pivot->share_percent}%)" : ''))->join(', '),
                 'status' => $status, 'tone' => $tone, 'attention' => $tone !== 'ok', 'lines' => $lines,
             ];

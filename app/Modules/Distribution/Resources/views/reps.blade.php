@@ -1,5 +1,5 @@
-<x-layouts.app title="Master data · Medical reps" description="Medical reps, their territories and the customers linked to them.">
-    <x-masters-tabs current="reps" />
+<x-layouts.app title="Medical reps" description="Medical reps, their territories and the customers linked to them.">
+    <x-page-header title="Medical reps" sub="Each rep’s territory, WhatsApp number and base salary. Payroll and the customer register use these." />
 
     <section class="card" aria-labelledby="reps-h">
         <div class="flex flex-wrap items-center justify-between gap-3">

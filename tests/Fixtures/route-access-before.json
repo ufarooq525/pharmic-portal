@@ -97,12 +97,12 @@
         "accounts",
         "viewer"
     ],
-    "GET master-data/name-matching": [
+    "GET distributors/name-matching": [
         "accounts",
         "data_entry",
         "viewer"
     ],
-    "GET master-data/reps": [
+    "GET medical-reps": [
         "accounts",
         "data_entry",
         "viewer"
@@ -110,7 +110,7 @@
     "GET payroll": [
         "accounts"
     ],
-    "GET products": [
+    "GET inventory/products": [
         "accounts",
         "data_entry",
         "viewer"
@@ -163,10 +163,10 @@
     "POST ledger/{distributor}/payments": [
         "accounts"
     ],
-    "POST master-data/reps": [
+    "POST medical-reps": [
         "accounts"
     ],
-    "POST products/{product}/rates": [],
+    "POST inventory/products/{product}/rates": [],
     "POST users": [],
     "PUT api/v1/customers/{customer}/reps": [
         "accounts"
@@ -176,7 +176,7 @@
         "data_entry"
     ],
     "PUT distributors/{distributor}": [],
-    "PUT master-data/reps/{rep}": [
+    "PUT medical-reps/{rep}": [
         "accounts"
     ],
     "PUT payroll/{rep}": [

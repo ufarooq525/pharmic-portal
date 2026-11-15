@@ -13,7 +13,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
-/** Master data tabs that live in this module: medical reps and product-name matching. */
+/** Medical reps page and the Distributors → Name matching tab. */
 class MasterDataController
 {
     public function __construct(private readonly MedicalRepRepository $reps) {}

@@ -1,8 +1,8 @@
 @php
     $asOf = $period->endOfMonth();
 @endphp
-<x-layouts.app title="Master data · Products & taxes" description="Products with their prices, sales tax and withholding tax rates.">
-    <x-masters-tabs current="products" />
+<x-layouts.app title="Inventory · Products & prices" description="Products with their prices, sales tax and withholding tax rates.">
+    @include('sales::_inventory-header', ['tab' => 'products', 'sub' => 'The products you stock, with their prices, sales tax, withholding tax and incentive. A change is saved with the date it starts, so earlier months keep their own figures.'])
 
     <section class="card flex flex-col gap-4" aria-labelledby="p-h">
         <h2 id="p-h" class="card-title card-title-icon"><span class="card-icon" style="--tone: var(--sky-c3)"><x-icon name="pill" /></span>Products, prices and taxes for {{ $period->format('F Y') }}</h2>
@@ -35,7 +35,7 @@
                         @endif
                         <td class="text-[12px] text-muted">{{ $product->aliases->map(fn ($a) => $a->name_in_file)->unique()->take(4)->join(' · ') ?: '–' }}</td>
                         @if ($canEdit)
-                            <td><a href="{{ request()->fullUrlWithQuery(['edit' => $product->id]) }}#rate-form" data-drawer="#rate-form" class="btn btn-sm" aria-label="Change rates for {{ $product->name }}" data-row-target>Change</a></td>
+                            <td class="text-right"><a href="{{ request()->fullUrlWithQuery(['edit' => $product->id]) }}#rate-form" data-drawer="#rate-form" data-drawer-title="Rates for {{ $product->name }}" class="icon-btn" aria-label="Edit rates and taxes for {{ $product->name }}" title="Edit rates and taxes" data-row-target><x-icon name="pencil" /></a></td>
                         @endif
                     </tr>
                 @endforeach
