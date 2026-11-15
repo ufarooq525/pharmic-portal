@@ -26,7 +26,7 @@ class ImportResource extends JsonResource
             'checks' => $this->checks,
             'confirmed_at' => $this->confirmed_at?->toIso8601String(),
             'distributor' => new DistributorResource($this->whenLoaded('distributor')),
-            'unmapped' => $this->rows()->whereNull('product_id')->distinct()->pluck('product_name'),
+            'unmapped' => $this->unmappedRows->pluck('product_name')->unique()->values(),
         ];
     }
 }

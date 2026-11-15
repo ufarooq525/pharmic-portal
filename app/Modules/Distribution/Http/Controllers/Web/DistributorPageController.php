@@ -31,7 +31,7 @@ class DistributorPageController
         return view('distribution::distributors', [
             'distributors' => $distributors,
             'current' => $current,
-            'aliases' => $current ? $this->aliases->forDistributor($current->id) : collect(),
+            'aliases' => $current ? $this->aliases->forDistributor($current->id) : null,
             'lastImport' => $current ? $this->imports->latestFor($current->id) : null,
             'canEdit' => $request->user()->can('distributors.edit'),
             'canUnlink' => $request->user()->can('distributors.unlink'),

@@ -106,9 +106,9 @@
                     </section>
                 @endif
 
-                <section class="card" aria-labelledby="alias-h">
+                <section id="names" class="card scroll-mt-4" aria-labelledby="alias-h">
                     <h2 id="alias-h" class="card-title">How {{ str($current->name)->before(' ') }} names the products</h2>
-                    @if ($aliases->isNotEmpty())
+                    @if ($aliases?->isNotEmpty())
                         <div class="table-wrap">
                             <table class="data">
                                 <thead><tr><th scope="col">Item code</th><th scope="col">Name in the file</th><th scope="col">Product</th>@if ($canUnlink)<th scope="col"><span class="sr-only">Actions</span></th>@endif</tr></thead>
@@ -132,6 +132,7 @@
                                 </tbody>
                             </table>
                         </div>
+                        {{ $aliases->links() }}
                     @else
                         <x-empty>No product names linked yet. They are linked on the review screen of the first file.</x-empty>
                     @endif

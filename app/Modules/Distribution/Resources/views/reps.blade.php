@@ -15,7 +15,7 @@
                 </tr>
                 </thead>
                 <tbody>
-                @foreach ($reps as $rep)
+                @foreach ($repsPage as $rep)
                     <tr>
                         <td class="font-bold">{{ $rep->name }}</td>
                         <td>{{ $rep->territory->name }}</td>
@@ -24,13 +24,14 @@
                         <td class="r">{{ fmt_num($linked[$rep->id] ?? 0) }}</td>
                         <td><x-chip :tone="$rep->is_active ? 'ok' : 'mute'">{{ $rep->is_active ? 'Active' : 'Inactive' }}</x-chip></td>
                         @if ($canEdit)
-                            <td class="text-right"><a href="{{ route('reps.index', ['edit' => $rep->id]) }}#rep-form" data-drawer="#rep-form" class="btn btn-sm">Edit</a></td>
+                            <td class="text-right"><a href="{{ route('reps.index', ['edit' => $rep->id]) }}#rep-form" data-drawer="#rep-form" class="btn btn-sm" aria-label="Edit {{ $rep->name }}" data-row-target>Edit</a></td>
                         @endif
                     </tr>
                 @endforeach
                 </tbody>
             </table>
         </div>
+        {{ $repsPage->links() }}
         <p class="m-0 text-[12px] text-muted">A customer can be shared between two reps with a 50/50 split, for example between Mardan 1 and Mardan 2. Link customers to reps on the Customers page.</p>
     </section>
 

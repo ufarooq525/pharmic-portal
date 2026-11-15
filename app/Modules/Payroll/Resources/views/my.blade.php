@@ -17,7 +17,7 @@
                 <table class="data">
                     <thead><tr><th scope="col">Customer</th><th scope="col">Distributor</th><th scope="col" class="r">Share</th><th scope="col" class="r">Units</th><th scope="col" class="r">Bonus</th><th scope="col" class="r">Sales Rs</th><th scope="col" class="r">Incentive Rs</th></tr></thead>
                     <tbody>
-                    @foreach ($customers as $c)
+                    @foreach ($customersPage = \App\Support\Paginate::collection($customers, 30) as $c)
                         <tr>
                             <td><span class="block font-semibold">{{ $c->name }}</span><span class="text-[12px] text-muted">{{ $c->area ?: 'No area' }}</span></td>
                             <td>{{ $c->distributor }}</td>
@@ -31,6 +31,7 @@
                     </tbody>
                 </table>
             </div>
+            {{ $customersPage->links() }}
         @else
             <x-empty>No customers are linked to you yet. Ask Accounts to link your customers.</x-empty>
         @endif

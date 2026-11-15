@@ -14,7 +14,7 @@ class CustomerController
     public function index(Request $request, CustomerRepository $customers): AnonymousResourceCollection
     {
         $list = $customers->base($request->user()->visibleDistributorIds(), $request->integer('distributor_id') ?: null, $request->string('search')->trim()->toString())
-            ->with(['distributor', 'medicalReps:id,name'])
+            ->with(['distributor', 'medicalReps:id,name,phone,is_active'])
             ->when($request->boolean('without_rep'), fn ($q) => $q->doesntHave('medicalReps'))
             ->orderBy('name')->paginate(50)->withQueryString();
 
@@ -26,6 +26,6 @@ class CustomerController
     {
         $customer->medicalReps()->sync(collect($request->validated('reps'))->mapWithKeys(fn ($r) => [$r['medical_rep_id'] => ['share_percent' => $r['share_percent']]]));
 
-        return new CustomerResource($customer->load('medicalReps:id,name'));
+        return new CustomerResource($customer->load('medicalReps:id,name,phone,is_active'));
     }
 }

@@ -17,7 +17,7 @@
                 </tr>
                 </thead>
                 <tbody>
-                @foreach ($products as $product)
+                @foreach ($productsPage as $product)
                     @php($rate = $product->rateOn($asOf))
                     <tr>
                         <td class="font-bold">{{ $product->name }}</td>
@@ -35,13 +35,14 @@
                         @endif
                         <td class="text-[12px] text-muted">{{ $product->aliases->map(fn ($a) => $a->name_in_file)->unique()->take(4)->join(' · ') ?: '–' }}</td>
                         @if ($canEdit)
-                            <td><a href="{{ request()->fullUrlWithQuery(['edit' => $product->id]) }}#rate-form" data-drawer="#rate-form" class="btn btn-sm">Change</a></td>
+                            <td><a href="{{ request()->fullUrlWithQuery(['edit' => $product->id]) }}#rate-form" data-drawer="#rate-form" class="btn btn-sm" aria-label="Change rates for {{ $product->name }}" data-row-target>Change</a></td>
                         @endif
                     </tr>
                 @endforeach
                 </tbody>
             </table>
         </div>
+        {{ $productsPage->links() }}
         <p class="text-[12px] text-muted">Sales tax and withholding tax are each worked out on the trade-price value of every sale line, at the rate in force for that month, and stored with the sale.</p>
     </section>
 

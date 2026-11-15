@@ -5,6 +5,10 @@
     $closingLabel = $s && $s['closing'] < 0 ? 'Paid in advance' : 'Balance due';
     $closingNote = $year == now()->format('Y') ? 'Today' : '31 Dec '.$year;
     $m = collect($month);
+    $balancesPage = \App\Support\Paginate::collection($m, 25);
+    // The statement pages through the year; a later page starts from the balance brought forward.
+    $entries = $s ? \App\Support\Paginate::collection($s['rows'], 50, 'entries_page', 'statement') : null;
+    $broughtForward = $entries && $entries->currentPage() > 1 ? $s['rows'][$entries->firstItem() - 2]['balance'] : null;
     $monthName = $period->format('F');
 @endphp
 <x-layouts.app title="Distributor ledger" description="Opening balance, invoices including both taxes, payments received and what each distributor still owes.">
@@ -24,10 +28,10 @@
                 <tr><th scope="col">Distributor</th><th scope="col" class="r">Opening</th><th scope="col" class="r">Invoiced {{ $period->format('M') }}</th><th scope="col" class="r">Total due</th><th scope="col" class="r">Received</th><th scope="col" class="r">Balance</th><th scope="col">{{ $monthName }}</th></tr>
                 </thead>
                 <tbody>
-                @foreach ($m as $row)
+                @foreach ($balancesPage as $row)
                     @php([$label, $tone] = $row['status'] ? [$row['status']->label(), $row['status']->tone()] : ['File not received', 'mute'])
                     <tr>
-                        <td><a href="{{ route('ledger.index', ['distributor' => $row['distributor']->id, 'period' => $period->format('Y-m')]) }}#statement" class="font-semibold">{{ $row['distributor']->name }}, {{ $row['distributor']->city }}</a></td>
+                        <td><a href="{{ route('ledger.index', ['distributor' => $row['distributor']->id, 'period' => $period->format('Y-m')]) }}#statement" class="font-semibold" data-row-target>{{ $row['distributor']->name }}, {{ $row['distributor']->city }}</a></td>
                         <td class="r">{{ fmt_num($row['opening']) }}</td>
                         <td class="r">{{ fmt_num($row['invoiced']) }}</td>
                         <td class="r">{{ fmt_num($row['due']) }}</td>
@@ -42,6 +46,7 @@
                 </tfoot>
             </table>
         </div>
+        {{ $balancesPage->links() }}
         <p class="m-0 text-[12px] text-muted">An invoice is the month’s confirmed sales at trade price plus sales tax and withholding tax. Opening balances come from each distributor’s profile; change the month at the top to see another month.</p>
     </section>
 
@@ -99,13 +104,13 @@
                             </thead>
                             <tbody>
                             <tr>
-                                <td class="num text-muted">1 Jan</td>
-                                <td class="font-semibold">Opening balance</td>
+                                <td class="num text-muted">{{ $broughtForward === null ? '1 Jan' : '' }}</td>
+                                <td class="font-semibold">{{ $broughtForward === null ? 'Opening balance' : 'Brought forward from page '.($entries->currentPage() - 1) }}</td>
                                 <td class="r"></td><td class="r"></td>
-                                <td class="r font-bold">{{ fmt_num($s['opening']) }}</td>
+                                <td class="r font-bold">{{ fmt_num($broughtForward ?? $s['opening']) }}</td>
                                 @if ($canRemove)<td></td>@endif
                             </tr>
-                            @foreach ($s['rows'] as $r)
+                            @foreach ($entries as $r)
                                 <tr>
                                     <td class="num whitespace-nowrap text-muted">{{ $r['date']->format('j M') }}</td>
                                     <td>
@@ -142,6 +147,7 @@
                             </tfoot>
                         </table>
                     </div>
+                    {{ $entries->links() }}
                     @if (! $s['rows'])
                         <x-empty>No confirmed sales or payments for {{ $current->name }} in {{ $year }} yet.</x-empty>
                     @endif

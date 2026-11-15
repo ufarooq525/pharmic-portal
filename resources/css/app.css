@@ -191,6 +191,9 @@
     .data th { @apply bg-head px-3.5 py-2.5 text-left text-[12px] font-bold whitespace-nowrap text-muted first:rounded-l-xl last:rounded-r-xl; }
     .data td { @apply border-b border-hair px-3.5 py-[11px] align-middle; transition: background-color .15s; }
     .data tbody tr:hover > td { background: var(--sky-sunk); }
+    /* Rows with a main link open it on click (resources/js/app.js) */
+    .data tbody tr:has([data-row-target]) { cursor: pointer; }
+    .data tbody tr:has([data-row-target]):hover > td { background: color-mix(in srgb, var(--sky-accent) 6%, var(--sky-sunk)); }
     .data tfoot td { @apply border-0 bg-soft font-extrabold text-softfg first:rounded-l-xl last:rounded-r-xl; }
     .data tfoot tr:first-child td { box-shadow: 0 -6px 0 var(--sky-surface); }
     .data td.r { @apply text-right font-mono whitespace-nowrap; font-variant-numeric: tabular-nums; }

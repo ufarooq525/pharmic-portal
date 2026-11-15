@@ -103,7 +103,7 @@
                     @foreach ($checklist as $row)
                         <tr>
                             <td class="font-bold">
-                                <a href="{{ $row['import_id'] ? route('imports.show', $row['import_id']) : route('imports.index', $q + ['distributor' => $row['distributor_id']]) }}" class="text-ink no-underline hover:underline">{{ $row['name'] }}</a>
+                                <a href="{{ $row['import_id'] ? route('imports.show', $row['import_id']) : route('imports.index', $q + ['distributor' => $row['distributor_id']]) }}" class="text-ink no-underline hover:underline" data-row-target>{{ $row['name'] }}</a>
                             </td>
                             <td class="text-muted">{{ $row['city'] }}</td>
                             <td><x-chip :tone="$row['tone']">{{ $row['label'] }}</x-chip></td>

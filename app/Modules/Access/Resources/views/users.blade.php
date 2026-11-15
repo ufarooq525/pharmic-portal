@@ -11,8 +11,6 @@
         return $ids === null ? 'All distributors' : collect($ids)->map(fn ($id) => $distributorNames[$id] ?? '?')->join(', ');
     };
     $total = count(\App\Modules\Access\Enums\Permission::cases());
-    $editUser = $users->firstWhere('id', $editing);
-    $editRole = $roles->firstWhere('id', $editingRole);
     $mine = $actor->permissionValues();
     $canGive = fn (string $p) => $actor->isOwner() || in_array($p, $mine, true);
 @endphp
@@ -20,7 +18,7 @@
     <x-page-header title="Users and roles" sub="A role is a set of permissions. Each person gets one role, plus any extra permissions you tick for them." />
 
     <nav class="tabs" aria-label="Users and roles">
-        <a href="{{ route('users.index') }}" class="tab" @if ($tab === 'people') aria-current="page" @endif>People <span class="text-muted">{{ $users->count() }}</span></a>
+        <a href="{{ route('users.index') }}" class="tab" @if ($tab === 'people') aria-current="page" @endif>People <span class="text-muted">{{ $users->total() }}</span></a>
         <a href="{{ route('users.index', ['tab' => 'roles']) }}" class="tab" @if ($tab === 'roles') aria-current="page" @endif>Roles <span class="text-muted">{{ $roles->count() }}</span></a>
     </nav>
 
@@ -37,7 +35,7 @@
                 <table class="data">
                     <thead><tr><th scope="col">Role</th><th scope="col" class="r">People</th><th scope="col">Permissions</th><th scope="col"><span class="sr-only">Actions</span></th></tr></thead>
                     <tbody>
-                    @foreach ($roles as $r)
+                    @foreach ($rolesPage as $r)
                         @php $count = count($rolePermissions[$r->id]); @endphp
                         <tr>
                             <td>
@@ -56,7 +54,7 @@
                                 @if ($r->is_owner)
                                     <span class="text-[12px] text-muted">Can’t be changed</span>
                                 @else
-                                    <a href="{{ route('users.index', ['tab' => 'roles', 'role' => $r->id]) }}#role-form" data-drawer="#role-form" data-drawer-title="Edit {{ $r->name }}" class="btn btn-sm" aria-label="Edit role {{ $r->name }}">Edit</a>
+                                    <a href="{{ route('users.index', ['tab' => 'roles', 'role' => $r->id]) }}#role-form" data-drawer="#role-form" data-drawer-title="Edit {{ $r->name }}" class="btn btn-sm" aria-label="Edit role {{ $r->name }}" data-row-target>Edit</a>
                                     @if ($r->users_count === 0)
                                         <form method="post" action="{{ route('users.roles.destroy', $r) }}" data-ajax data-confirm="Delete the role “{{ $r->name }}”? Nobody has it, so nobody loses access." class="inline">
                                             @csrf
@@ -71,6 +69,7 @@
                     </tbody>
                 </table>
             </div>
+            {{ $rolesPage->links() }}
         </section>
 
         <section id="role-form" class="card scroll-mt-4" aria-labelledby="rf-h" data-drawer-source>
@@ -84,7 +83,7 @@
                 </div>
                 @include('access::_permissions', ['mode' => 'role', 'ticked' => old('permissions', $editRole ? $rolePermissions[$editRole->id] : []), 'fromRole' => [], 'canGive' => $canGive])
                 @if ($editRole && $editRole->users_count)
-                    <p class="m-0 text-[13px] text-muted">{{ $editRole->users_count === 1 ? '1 person has' : $editRole->users_count.' people have' }} this role: {{ $users->where('role_id', $editRole->id)->pluck('name')->join(', ') }}.</p>
+                    <p class="m-0 text-[13px] text-muted">{{ $editRole->users_count === 1 ? '1 person has' : $editRole->users_count.' people have' }} this role: {{ $editRolePeople->join(', ') }}.</p>
                 @endif
                 <div class="flex gap-2">
                     <button class="btn btn-primary" data-busy-label="Saving…">{{ $editRole ? 'Save role' : 'Add role' }}</button>
@@ -117,7 +116,7 @@
                             <td><x-chip :tone="$u->is_active ? 'ok' : 'mute'">{{ $u->is_active ? 'Active' : 'Deactivated' }}</x-chip></td>
                             <td class="text-right">
                                 @if ($actor->isOwner() || ! $u->isOwner())
-                                    <a href="{{ route('users.index', ['edit' => $u->id]) }}#user-form" data-drawer="#user-form" data-drawer-title="Edit {{ $u->name }}" class="btn btn-sm" aria-label="Edit {{ $u->name }}">Edit</a>
+                                    <a href="{{ route('users.index', ['edit' => $u->id]) }}#user-form" data-drawer="#user-form" data-drawer-title="Edit {{ $u->name }}" class="btn btn-sm" aria-label="Edit {{ $u->name }}" data-row-target>Edit</a>
                                 @endif
                             </td>
                         </tr>
@@ -125,6 +124,7 @@
                     </tbody>
                 </table>
             </div>
+            {{ $users->links() }}
         </section>
 
         @php

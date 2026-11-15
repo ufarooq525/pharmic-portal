@@ -26,7 +26,7 @@ class ImportController
     public function index(PeriodRequest $request, ImportRepository $imports, DistributorRepository $distributors): JsonResponse
     {
         $period = $request->period();
-        $byDistributor = $imports->latestPerDistributor($period);
+        $byDistributor = $imports->latestPerDistributor($period)->load('unmappedRows');
 
         return response()->json(['data' => $distributors->visible($request->user()->visibleDistributorIds())->map(fn ($d) => [
             'distributor' => new DistributorResource($d),

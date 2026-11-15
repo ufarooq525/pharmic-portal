@@ -16,6 +16,7 @@
             document.documentElement.dataset.theme = t;
         })();
     </script>
+    @include('partials.view-transition-guard')
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body class="flex min-h-screen items-center justify-center px-4 py-10">

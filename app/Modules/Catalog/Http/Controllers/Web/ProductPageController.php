@@ -2,6 +2,7 @@
 
 namespace App\Modules\Catalog\Http\Controllers\Web;
 
+use App\Support\Paginate;
 use App\Modules\Catalog\Actions\AddProductRate;
 use App\Modules\Catalog\Http\Requests\StoreProductRateRequest;
 use App\Modules\Catalog\Models\Product;
@@ -17,7 +18,8 @@ class ProductPageController
     {
         return view('catalog::products', [
             'period' => Period::fromRequest($request),
-            'products' => $products->withRatesAndAliases(),
+            'products' => $list = $products->withRatesAndAliases(),
+            'productsPage' => Paginate::collection($list, 25),
             'canEdit' => $request->user()->can('products.rates'),
             'editing' => $request->integer('edit') ?: null,
         ]);

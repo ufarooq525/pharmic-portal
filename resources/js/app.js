@@ -534,7 +534,12 @@ function swapPage(doc, url) {
     };
 
     // Not while the drawer slides out: a view transition would freeze it mid-slide.
-    if (document.startViewTransition && !reducedMotion() && drawer?.hidden !== false) document.startViewTransition(apply).finished.then(done, done);
+    if (document.startViewTransition && !reducedMotion() && drawer?.hidden !== false) {
+        const transition = document.startViewTransition(apply);
+        // Leaving the page mid-fade aborts the transition; that is fine, so don't report it as an error.
+        transition.ready.catch(() => {});
+        transition.finished.then(done, done);
+    }
     else { apply(); done(); }
 }
 
@@ -704,3 +709,20 @@ document.addEventListener('click', (event) => {
 });
 
 document.querySelectorAll('[data-permission-form]').forEach(refreshPermissions);
+
+/*
+ * Clickable table rows: a row that has a main link (marked data-row-target: Edit, Open, Payslip…)
+ * opens it when you click anywhere on the row. Buttons, links and form fields in the row keep
+ * working as before, selecting text does not trigger it, and Ctrl/⌘-click opens a new tab.
+ * Keyboard users reach the same link with Tab, so nothing depends on the row click.
+ */
+document.addEventListener('click', (event) => {
+    const row = event.target.closest('table.data tbody tr');
+    if (!row || event.button !== 0 || event.target.closest('a, button, input, select, textarea, label, summary, form')) return;
+    if (window.getSelection()?.toString().trim()) return;
+    const target = row.querySelector('[data-row-target]');
+    if (!target) return;
+    if ((event.ctrlKey || event.metaKey) && target.href) window.open(target.href, '_blank', 'noopener');
+    else target.click();
+});
+

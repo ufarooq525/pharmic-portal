@@ -1,5 +1,6 @@
 @php
     $sum = fn ($k) => $rows->sum($k);
+    $stockPage = \App\Support\Paginate::collection($rows, 25, 'stock_page');
     $levels = ['out' => ['Out of stock', 'bad'], 'low' => ['Reorder', 'warn'], 'ok' => ['OK', 'ok']];
 @endphp
 <x-layouts.app title="Inventory" description="Stock movement and closing stock for {{ $period->format('F Y') }}.">
@@ -28,7 +29,7 @@
                 </tr>
                 </thead>
                 <tbody>
-                @foreach ($rows as $r)
+                @foreach ($stockPage as $r)
                     <tr>
                         <td class="font-bold">{{ $r['name'] }}</td>
                         <td class="r">{{ fmt_num($r['opening']) }}</td>
@@ -58,6 +59,7 @@
                 </tfoot>
             </table>
         </div>
+        {{ $stockPage->links() }}
         <p class="text-[12px] text-muted">Sales tax and WHT show each product’s rate, and under it the tax on this month’s confirmed sales in Rs. Rates are set per product under Master data with an effective date. “Lasts” is closing stock divided by average units out per month over the last three months.</p>
     </section>
 

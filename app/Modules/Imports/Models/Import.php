@@ -35,6 +35,12 @@ class Import extends Model
         return $this->hasMany(ImportRow::class);
     }
 
+    /** Rows whose product name is not linked to a product yet (eager-load it for lists). */
+    public function unmappedRows(): HasMany
+    {
+        return $this->hasMany(ImportRow::class)->whereNull('product_id')->select(['id', 'import_id', 'product_name']);
+    }
+
     public function isConfirmed(): bool
     {
         return $this->status === ImportStatus::Confirmed;

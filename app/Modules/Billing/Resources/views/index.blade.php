@@ -106,7 +106,7 @@
                             <td>{{ $inv->billTo() }}</td>
                             <td class="r">{{ fmt_num($inv->total) }}</td>
                             <td><x-chip :tone="$inv->status === $cancelled ? 'mute' : $inv->kind->tone()">{{ $inv->status->label() }}</x-chip></td>
-                            <td class="text-right"><a href="{{ route('invoices.print', $inv) }}" target="_blank" rel="noopener" class="btn btn-sm">Open</a></td>
+                            <td class="text-right"><a href="{{ route('invoices.print', $inv) }}" target="_blank" rel="noopener" class="btn btn-sm" aria-label="Open {{ $inv->number }}" data-row-target>Open</a></td>
                         </tr>
                     @endforeach
                     </tbody>

@@ -29,6 +29,15 @@ class AppServiceProvider extends ServiceProvider
         // attributes throw, so they are caught while developing.
         Model::shouldBeStrict(! $this->app->isProduction());
 
+        // In production a missed eager load must not break the page, but it must not go unnoticed either:
+        // the query still runs and a warning names the model and relation, so it can be fixed.
+        if ($this->app->isProduction()) {
+            Model::preventLazyLoading();
+            Model::handleLazyLoadingViolationUsing(function (Model $model, string $relation) {
+                logger()->warning('Lazy loading (add it to with()): '.$model::class.'::'.$relation, ['url' => request()->fullUrl()]);
+            });
+        }
+
         // Every Permission is a gate ability: $user->can('imports.confirm'), @can('ledger.record') in Blade.
         Gate::before(fn (User $user, string $ability) => Permission::tryFrom($ability) ? $user->hasPermission($ability) : null);
 

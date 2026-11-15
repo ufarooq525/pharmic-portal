@@ -1,5 +1,6 @@
 @php
     $r = collect($rows);
+    $page = \App\Support\Paginate::collection($r, 25);
     $q = ['period' => $period->format('Y-m')];
 @endphp
 <x-layouts.app title="MR payroll" description="Base salary plus the percentage incentive each medical rep earned from confirmed sales.">
@@ -22,7 +23,7 @@
                 </tr>
                 </thead>
                 <tbody>
-                @foreach ($rows as $row)
+                @foreach ($page as $row)
                     @php($rep = $row['rep'])
                     <tr>
                         <td class="font-bold">{{ $rep->name }}@if ($row['note'])<span class="block text-[12px] font-normal text-muted">{{ $row['note'] }}</span>@endif</td>
@@ -34,7 +35,7 @@
                         <td class="r">{{ fmt_num($row['deductions']) }}</td>
                         <td class="r font-extrabold">{{ fmt_num($row['net']) }}</td>
                         <td class="whitespace-nowrap text-right">
-                            <a href="{{ route('payroll.payslip', [$rep] + $q) }}" target="_blank" rel="noopener" class="btn btn-sm">Payslip</a>
+                            <a href="{{ route('payroll.payslip', [$rep] + $q) }}" target="_blank" rel="noopener" class="btn btn-sm" aria-label="Payslip for {{ $rep->name }}" data-row-target>Payslip</a>
                             <a href="{{ whatsapp_url($rep->phone, config('pharmic.company')." payslip, {$period->format('F Y')}\n{$rep->name} · {$rep->territory->name}\nBase ".fmt_rs($row['base']).' + incentive '.fmt_rs($row['incentive']).($row['allowance'] ? ' + allowance '.fmt_rs($row['allowance']) : '').($row['deductions'] ? ' − deductions '.fmt_rs($row['deductions']) : '')."\nNet pay: ".fmt_rs($row['net'])) }}" target="_blank" rel="noopener" class="btn btn-sm">WhatsApp</a>
                             @if ($canEdit)<a href="{{ route('payroll.index', $q + ['edit' => $rep->id]) }}#adjust" data-drawer="#adjust" class="btn btn-sm">Adjust</a>@endif
                         </td>
@@ -46,6 +47,7 @@
                 </tfoot>
             </table>
         </div>
+        {{ $page->links() }}
         <p class="m-0 text-[12px] text-muted">Incentive is each product’s incentive % on the Ex-FP value of confirmed sales to the rep’s customers. Base salaries and phone numbers are set under Master data → Medical reps.</p>
     </section>
 

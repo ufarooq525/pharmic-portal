@@ -25,7 +25,12 @@ final class Period
 
     public static function latest(): CarbonImmutable
     {
-        $latest = Import::query()->max('period');
+        // Several parts of one page ask for this (page, sidebar, filters); look it up once per request.
+        $attributes = request()->attributes;
+        if (! $attributes->has('period.latest')) {
+            $attributes->set('period.latest', Import::query()->max('period'));
+        }
+        $latest = $attributes->get('period.latest');
 
         // Month-end work is for the month that just ended, so with no files yet the default is last month.
         return $latest ? CarbonImmutable::parse($latest)->startOfMonth() : CarbonImmutable::now()->subMonthNoOverflow()->startOfMonth();

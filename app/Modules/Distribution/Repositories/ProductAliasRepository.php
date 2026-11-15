@@ -15,9 +15,10 @@ class ProductAliasRepository extends Repository
         return ProductAlias::class;
     }
 
-    public function forDistributor(int $distributorId): Collection
+    /** One distributor's spellings, a page at a time (the distributors page shows them under the profile). */
+    public function forDistributor(int $distributorId, int $perPage = 50): LengthAwarePaginator
     {
-        return $this->query()->where('distributor_id', $distributorId)->with('product:id,name')->orderBy('name_in_file')->get();
+        return $this->paginate($perPage, fn ($q) => $q->where('distributor_id', $distributorId)->with('product:id,name')->orderBy('name_in_file'), 'names_page')->fragment('names');
     }
 
     /** Name matching tab: every distributor's spellings, optionally one distributor. */

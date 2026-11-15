@@ -2,6 +2,7 @@
 
 namespace App\Modules\Distribution\Http\Controllers\Web;
 
+use App\Support\Paginate;
 use App\Modules\Distribution\Actions\SaveMedicalRep;
 use App\Modules\Distribution\Http\Requests\SaveMedicalRepRequest;
 use App\Modules\Distribution\Models\MedicalRep;
@@ -20,7 +21,8 @@ class MasterDataController
     public function reps(Request $request): View
     {
         return view('distribution::reps', [
-            'reps' => $this->reps->withTerritory(),
+            'reps' => $reps = $this->reps->withTerritory(),
+            'repsPage' => Paginate::collection($reps, 25),
             'territories' => $this->reps->territories(),
             'linked' => $this->reps->customerCounts(),
             'canEdit' => $request->user()->can('reps.edit'),

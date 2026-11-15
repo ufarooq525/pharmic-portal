@@ -10,6 +10,7 @@ use App\Modules\Access\Repositories\RoleRepository;
 use App\Modules\Access\Repositories\UserRepository;
 use App\Modules\Distribution\Repositories\DistributorRepository;
 use App\Modules\Distribution\Repositories\MedicalRepRepository;
+use App\Support\Paginate;
 use DomainException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -22,17 +23,20 @@ class UserController
     public function index(Request $request, UserRepository $users, RoleRepository $roles, DistributorRepository $distributors, MedicalRepRepository $reps): View
     {
         $roleList = $roles->forAdmin();
+        $editingRole = $request->integer('role') ?: null;
 
         return view('access::users', [
             'tab' => $request->query('tab') === 'roles' ? 'roles' : 'people',
             'users' => $users->forAdmin(),
+            'editUser' => $users->forEdit($request->integer('edit') ?: null),
             'roles' => $roleList,
+            'rolesPage' => Paginate::collection($roleList, 25, 'roles_page'),
+            'editRole' => $roleList->firstWhere('id', $editingRole),
+            'editRolePeople' => $editingRole ? $users->namesWithRole($editingRole) : collect(),
             'rolePermissions' => $roleList->mapWithKeys(fn ($r) => [$r->id => $r->permissionValues()]),
             'permissionGroups' => Permission::grouped(),
             'distributors' => $distributors->visible(null, ['id', 'name']),
             'reps' => $reps->withTerritory(activeOnly: true),
-            'editing' => $request->integer('edit') ?: null,
-            'editingRole' => $request->integer('role') ?: null,
             'actor' => $request->user(),
         ]);
     }

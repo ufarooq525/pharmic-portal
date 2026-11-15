@@ -10,6 +10,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{ $title }} · {{ config('pharmic.company') }}</title>
     <meta name="robots" content="noindex, nofollow, noarchive">
+    @include('partials.view-transition-guard')
     @vite(['resources/css/app.css'])
     <style>@media print { .no-print { display: none !important; } body { background: #fff; } .card { box-shadow: none; padding: 0; } }</style>
 </head>

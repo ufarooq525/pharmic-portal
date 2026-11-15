@@ -24,6 +24,7 @@
             try { if (localStorage.getItem('pharmic-sidebar') === 'collapsed') document.documentElement.classList.add('sb-collapsed'); } catch (e) {}
         })();
     </script>
+    @include('partials.view-transition-guard')
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body>
