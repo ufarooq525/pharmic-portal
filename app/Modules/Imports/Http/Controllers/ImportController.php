@@ -60,6 +60,8 @@ class ImportController
 
     public function confirm(Request $request, Import $import, ConfirmImport $confirm): ImportResource|JsonResponse
     {
+        abort_unless($request->user()->canSeeDistributor($import->distributor_id), 403);
+
         try {
             $confirm->handle($import, $request->user());
         } catch (DomainException $e) {

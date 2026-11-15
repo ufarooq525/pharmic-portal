@@ -10,6 +10,11 @@ class AssignRepsApiRequest extends FormRequest
 {
     protected array $roles = ['accounts', 'data_entry'];
 
+    public function authorize(): bool
+    {
+        return parent::authorize() && $this->user()->canSeeDistributor((int) $this->route('customer')->distributor_id);
+    }
+
     public function rules(): array
     {
         return [
