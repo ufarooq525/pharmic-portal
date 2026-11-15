@@ -340,6 +340,29 @@ class PortalTest extends TestCase
         $this->get('/imports')->assertOk()->assertDontSee('Irfan Enterprises');
     }
 
+    public function test_the_api_refuses_another_distributors_import_and_customers(): void
+    {
+        $import = $this->import(withUnknownProduct: true);
+        $gyn = Product::where('code', 'GYN')->value('id');
+        $rep = MedicalRep::orderBy('id')->value('id');
+        $hamdan = Distributor::where('name', 'Hamdan Enterprises')->value('id');
+        $scoped = User::factory()->role('accounts')->create(['distributor_ids' => [$hamdan]]);
+        $this->actingAs($scoped, 'sanctum');
+
+        $this->postJson("/api/v1/imports/{$import->id}/map-product", ['product_name' => 'EQUAT FLORA', 'product_id' => $gyn])->assertForbidden();
+        $this->postJson("/api/v1/imports/{$import->id}/confirm")->assertForbidden();
+        $this->assertSame(ImportStatus::NeedsReview, $import->refresh()->status);
+        $this->assertNull($import->rows()->where('product_name', 'EQUAT FLORA')->value('product_id'));
+
+        app(ConfirmImport::class)->handle($this->import(), $this->owner());
+        $customer = Customer::firstOrFail();
+        $this->putJson("/api/v1/customers/{$customer->id}/reps", ['reps' => [['medical_rep_id' => $rep, 'share_percent' => 100]]])->assertForbidden();
+        $this->assertSame(0, $customer->medicalReps()->count());
+
+        // The web name-matching form shares the request, so it is closed to this user as well.
+        $this->actingAs($scoped, 'web')->post("/imports/{$import->id}/map", ['product_name' => 'EQUAT FLORA', 'product_id' => $gyn])->assertForbidden();
+    }
+
     public function test_reverting_an_import_restores_stock_cancels_its_invoice_and_can_remove_the_file(): void
     {
         $import = $this->import();
@@ -353,9 +376,10 @@ class PortalTest extends TestCase
         $this->assertModelMissing($import);
         $this->assertSame(0, SaleLine::count());
         $this->assertEqualsWithDelta(3294, (float) \App\Modules\Sales\Models\StockMovement::where('product_id', $gyn)->sum('units'), 0.01);
-        $this->assertSame('cancelled', \App\Modules\Billing\Models\Invoice::where('kind', 'invoice')->value('status'));
+        $this->assertSame(\App\Modules\Billing\Enums\InvoiceStatus::Cancelled, \App\Modules\Billing\Models\Invoice::where('kind', 'invoice')->first()->status);
         $this->assertDatabaseHas('invoices', ['kind' => 'credit_note']);
-        $this->assertSame(1, Customer::count()); // still on the cancelled invoice, so it stays in the register
+        // A distributor-wide invoice names no customer (its lines are per product), so the customer this file added leaves the register.
+        $this->assertSame(0, Customer::count());
     }
 
     public function test_reverting_keeps_the_file_in_review_and_removes_customers_it_added(): void

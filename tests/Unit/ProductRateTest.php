@@ -3,7 +3,7 @@
 namespace Tests\Unit;
 
 use App\Modules\Catalog\Models\ProductRate;
-use PHPUnit\Framework\TestCase;
+use Tests\TestCase; // boots the app: an Eloquent model needs it even without a database
 
 class ProductRateTest extends TestCase
 {
