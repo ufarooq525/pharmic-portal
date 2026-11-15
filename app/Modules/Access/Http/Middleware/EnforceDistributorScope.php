@@ -26,7 +26,8 @@ class EnforceDistributorScope
             foreach ($request->route()?->parameters() ?? [] as $record) {
                 $distributorId = match (true) {
                     $record instanceof Distributor => $record->getKey(),
-                    $record instanceof Model => $record->getAttribute('distributor_id'),
+                    // Read the raw attributes: models without the column (users, roles) would throw in strict mode.
+                    $record instanceof Model => $record->getAttributes()['distributor_id'] ?? null,
                     default => null,
                 };
 

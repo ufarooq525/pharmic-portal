@@ -20,7 +20,7 @@
     $open = count($checklist) - $confirmed;
     $distMax = max(1, ...array_map(fn ($d) => (float) $d['value'], $byDistributor ?: [['value' => 1]]));
     $filtered = array_filter($filters);
-    $canUpload = auth()->user()->hasRole('accounts', 'data_entry');
+    $canUpload = auth()->user()->can('imports.upload');
     $initials = fn (string $name) => collect(preg_split('/\s+/', trim($name)))->take(2)->map(fn ($w) => mb_strtoupper(mb_substr($w, 0, 1)))->join('');
     $productMax = max(1, ...array_map(fn ($i) => (float) $i['value'], $byProduct ?: [['value' => 1]]));
 @endphp
@@ -251,7 +251,7 @@
                 @foreach (array_filter([
                     ['Invoiced to distributors', fmt_rs($money['invoiced']), 'incl. sales tax and WHT', route('ledger.index', $q)],
                     ['Received', fmt_rs($money['received']), 'payments recorded', route('ledger.index', $q)],
-                    ['Invoices issued', fmt_num($money['invoices']), fmt_rs($money['invoicesTotal']), auth()->user()->hasRole('accounts') ? route('invoices.index', $q) : null],
+                    ['Invoices issued', fmt_num($money['invoices']), fmt_rs($money['invoicesTotal']), auth()->user()->can('invoices.view') ? route('invoices.index', $q) : null],
                     $money['payroll'] !== null ? ['Net payroll', fmt_rs($money['payroll']), 'base + incentive', route('payroll.index', $q)] : null,
                 ]) as [$label, $value, $sub, $url])
                     <div class="flex flex-col gap-1 rounded-2xl bg-sunk px-3.5 py-3">

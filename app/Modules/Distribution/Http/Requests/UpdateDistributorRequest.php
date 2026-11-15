@@ -2,6 +2,7 @@
 
 namespace App\Modules\Distribution\Http\Requests;
 
+use App\Modules\Access\Enums\Permission;
 use App\Modules\Distribution\Enums\BonusSource;
 use App\Modules\Imports\Enums\ReportLayout;
 use App\Support\Http\Requests\FormRequest;
@@ -9,7 +10,7 @@ use Illuminate\Validation\Rule;
 
 class UpdateDistributorRequest extends FormRequest
 {
-    protected array $roles = ['owner'];
+    protected ?Permission $permission = Permission::DistributorsEdit;
 
     public function rules(): array
     {

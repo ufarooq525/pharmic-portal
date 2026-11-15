@@ -2,6 +2,7 @@
 
 namespace App\Modules\Billing\Http\Requests;
 
+use App\Modules\Access\Enums\Permission;
 use App\Modules\Billing\Repositories\InvoiceRepository;
 use App\Modules\Distribution\Models\Customer;
 use App\Modules\Distribution\Models\Distributor;
@@ -12,7 +13,7 @@ use Carbon\CarbonImmutable;
 /** "to" is "d:5" for a distributor account or "c:42" for one customer. */
 class IssueInvoiceRequest extends FormRequest
 {
-    protected array $roles = ['accounts'];
+    protected ?Permission $permission = Permission::InvoicesIssue;
 
     public function rules(): array
     {

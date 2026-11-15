@@ -16,7 +16,7 @@ class ActivityLogRepository extends Repository
 
     public function latest(?string $action, int $perPage = 50): LengthAwarePaginator
     {
-        return $this->paginate($perPage, fn ($q) => $q->with('user:id,name,role')->when($action, fn ($w) => $w->where('action', $action))->latest('id'));
+        return $this->paginate($perPage, fn ($q) => $q->with('user:id,name')->when($action, fn ($w) => $w->where('action', $action))->latest('id'));
     }
 
     public function actions(): Collection

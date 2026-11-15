@@ -23,7 +23,7 @@ class MasterDataController
             'reps' => $this->reps->withTerritory(),
             'territories' => $this->reps->territories(),
             'linked' => $this->reps->customerCounts(),
-            'canEdit' => $request->user()->hasRole('accounts'),
+            'canEdit' => $request->user()->can('reps.edit'),
             'editing' => $request->integer('edit') ?: null,
         ]);
     }
@@ -50,7 +50,7 @@ class MasterDataController
             'distributors' => $distributors->visible(null, ['id', 'name']),
             'distributorId' => $distributorId,
             'aliases' => $aliases->list($distributorId),
-            'canEdit' => $request->user()->hasRole('owner'),
+            'canEdit' => $request->user()->can('distributors.unlink'),
         ]);
     }
 }

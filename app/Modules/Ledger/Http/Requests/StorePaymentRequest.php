@@ -2,13 +2,14 @@
 
 namespace App\Modules\Ledger\Http\Requests;
 
+use App\Modules\Access\Enums\Permission;
 use App\Modules\Ledger\Enums\PaymentMethod;
 use App\Support\Http\Requests\FormRequest;
 use Illuminate\Validation\Rule;
 
 class StorePaymentRequest extends FormRequest
 {
-    protected array $roles = ['accounts'];
+    protected ?Permission $permission = Permission::LedgerRecord;
 
     public function authorize(): bool
     {

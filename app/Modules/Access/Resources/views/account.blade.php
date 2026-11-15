@@ -1,5 +1,5 @@
 <x-layouts.app title="My account" description="Change your password.">
-    <x-page-header title="My account" :sub="auth()->user()->name.' · '.auth()->user()->email.' · '.auth()->user()->role->label()" />
+    <x-page-header title="My account" :sub="auth()->user()->name.' · '.auth()->user()->email.' · '.auth()->user()->roleLabel()" />
 
     <section id="password-form" class="card max-w-[560px]" aria-labelledby="pw-h">
         <h2 id="pw-h" class="card-title">Change password</h2>

@@ -45,7 +45,7 @@ class CustomerPageController
             'reps' => $this->reps->withTerritory(activeOnly: true),
             'distributorId' => $distributorId,
             'search' => $search,
-            'canAssign' => $request->user()->hasRole('accounts', 'data_entry'),
+            'canAssign' => $request->user()->can('customers.assign'),
         ]);
     }
 

@@ -120,7 +120,7 @@
         @if ($receipts->isNotEmpty())
             <div class="table-wrap">
                 <table class="data">
-                    <thead><tr><th scope="col">Date</th><th scope="col">Receipt</th><th scope="col" class="r">Products</th><th scope="col" class="r">Units</th><th scope="col">By</th><th scope="col">Status</th>@if ($canReceive)<th scope="col"><span class="sr-only">Actions</span></th>@endif</tr></thead>
+                    <thead><tr><th scope="col">Date</th><th scope="col">Receipt</th><th scope="col" class="r">Products</th><th scope="col" class="r">Units</th><th scope="col">By</th><th scope="col">Status</th>@if ($canRevert)<th scope="col"><span class="sr-only">Actions</span></th>@endif</tr></thead>
                     <tbody>
                     @foreach ($receipts as $rc)
                         <tr>
@@ -136,7 +136,7 @@
                                     <x-chip tone="mute">Reverted {{ $rc->reverted_at?->format('j M') }}</x-chip>
                                 @endif
                             </td>
-                            @if ($canReceive)
+                            @if ($canRevert)
                                 <td class="text-right">
                                     @if ($rc->isPosted())
                                         <form method="post" action="{{ route('inventory.receipts.revert', $rc) }}" data-ajax data-confirm="Revert receipt #{{ $rc->id }}? Its {{ fmt_num($rc->total_units) }} units come back out of stock.">

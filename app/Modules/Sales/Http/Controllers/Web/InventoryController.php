@@ -20,8 +20,9 @@ class InventoryController
             'rows' => $inventory->stockFor($period),
             'products' => $products->active(['id', 'name', 'code']),
             'receipts' => $receipts->latest(),
-            'canReceive' => $request->user()->hasRole('accounts'),
-            'canEditRates' => $request->user()->hasRole('owner'),
+            'canReceive' => $request->user()->can('stock.receive'),
+            'canRevert' => $request->user()->can('stock.revert'),
+            'canEditRates' => $request->user()->can('products.rates'),
         ]);
     }
 }

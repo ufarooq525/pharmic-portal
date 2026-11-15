@@ -2,12 +2,13 @@
 
 namespace App\Modules\Payroll\Http\Requests;
 
+use App\Modules\Access\Enums\Permission;
 use App\Support\Http\Requests\FormRequest;
 use Carbon\CarbonImmutable;
 
 class AdjustPayrollRequest extends FormRequest
 {
-    protected array $roles = ['accounts'];
+    protected ?Permission $permission = Permission::PayrollAdjust;
 
     public function rules(): array
     {

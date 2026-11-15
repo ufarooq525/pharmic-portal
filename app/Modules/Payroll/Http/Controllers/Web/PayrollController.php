@@ -22,7 +22,7 @@ class PayrollController
         return view('payroll::index', [
             'period' => $period,
             'rows' => $this->payroll->month($period),
-            'canEdit' => $request->user()->hasRole('accounts'),
+            'canEdit' => $request->user()->can('payroll.adjust'),
             'editing' => $request->integer('edit') ?: null,
         ]);
     }
@@ -39,7 +39,7 @@ class PayrollController
     public function payslip(Request $request, MedicalRep $rep): View
     {
         $user = $request->user();
-        abort_unless($user->hasRole('accounts') || (int) $user->medical_rep_id === $rep->id, 403);
+        abort_unless($user->can('payroll.view') || (int) $user->medical_rep_id === $rep->id, 403);
         $period = Period::fromRequest($request);
         $row = $this->payroll->month($period, $rep->id)[0] ?? abort(404);
 

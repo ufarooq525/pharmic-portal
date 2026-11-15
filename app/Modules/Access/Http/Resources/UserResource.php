@@ -14,8 +14,10 @@ class UserResource extends JsonResource
             'id' => $this->id,
             'name' => $this->name,
             'email' => $this->email,
-            'role' => $this->role->value,
-            'role_label' => $this->role->label(),
+            'login_type' => $this->login_type->value,
+            'role' => $this->isMedicalRep() ? null : $this->role?->name,
+            'role_label' => $this->roleLabel(),
+            'permissions' => $this->permissionValues(),
             'distributor_ids' => $this->visibleDistributorIds(),
             'medical_rep_id' => $this->medical_rep_id,
         ];

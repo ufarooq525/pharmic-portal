@@ -473,6 +473,7 @@ function openDrawer(section, title) {
     drawerBody.classList.remove('drawer-enter');
     void drawerBody.offsetWidth; // restart the fade-in when content replaces the skeleton
     drawerBody.classList.add('drawer-enter');
+    drawerBody.querySelectorAll('[data-permission-form]').forEach(refreshPermissions);
     drawerBody.querySelector('input:not([type=hidden]), select, textarea')?.focus({ preventScroll: true });
 }
 
@@ -583,8 +584,13 @@ async function backgroundSubmit(form, inDrawer = false) {
     const fail = (message) => {
         lockButtons(form, false);
         hideLoader();
-        if (inDrawer) form.prepend(Object.assign(document.createElement('div'), { className: 'rounded-[14px] bg-bad-soft px-3.5 py-3 font-semibold text-bad', textContent: message, dataset: { formProblem: '' } }));
-        else toast(message, 'bad');
+        if (inDrawer) {
+            // dataset can't be set with Object.assign (it is read-only), so mark the box separately.
+            const box = Object.assign(document.createElement('div'), { className: 'rounded-[14px] bg-bad-soft px-3.5 py-3 font-semibold text-bad', textContent: message });
+            box.dataset.formProblem = '';
+            box.setAttribute('role', 'alert');
+            form.prepend(box);
+        } else toast(message, 'bad');
     };
 
     try {
@@ -620,3 +626,81 @@ async function backgroundSubmit(form, inDrawer = false) {
         fail('Could not save. Check the connection and try again.');
     }
 }
+
+/*
+ * Roles and people: the permission checklist stays consistent while you tick.
+ * - Ticking an action ticks the "view" it needs; unticking a view unticks its actions.
+ * - On a person, the role's permissions show ticked and locked; changing the role re-ticks at once,
+ *   and the boxes the person had ticked themself (their extras) are remembered.
+ * - Choosing "Medical rep" hides the role and permissions, which don't apply to them.
+ */
+function refreshPermissions(form) {
+    const box = form.querySelector('[data-permissions]');
+    form.querySelectorAll('[data-for-type]').forEach((section) => {
+        section.hidden = section.dataset.forType !== (form.querySelector('[data-login-type]:checked')?.value || 'staff');
+    });
+    if (!box) return;
+
+    const boxes = [...box.querySelectorAll('[data-perm]')];
+    let inheritedCount = 0;
+    if (box.dataset.mode === 'person') {
+        const roleId = form.querySelector('[data-role-select]')?.value || '';
+        const isOwner = JSON.parse(form.dataset.ownerRoles || '[]').map(String).includes(roleId);
+        const fromRole = new Set(JSON.parse(form.dataset.rolePermissions || '{}')[roleId] || []);
+        boxes.forEach((cb) => {
+            const inherited = isOwner || fromRole.has(cb.value);
+            cb.checked = inherited || cb.dataset.extra === '1';
+            cb.disabled = inherited || cb.hasAttribute('data-locked');
+            cb.closest('.perm').querySelector('[data-from-role]').hidden = !inherited;
+            if (inherited) inheritedCount++;
+        });
+        box.querySelector('[data-owner-note]').hidden = !isOwner;
+        const extrasNote = box.querySelector('[data-extras-note]');
+        if (extrasNote) extrasNote.hidden = isOwner;
+        const limits = form.querySelector('[data-hide-for-owner]');
+        if (limits) limits.hidden = isOwner;
+    }
+    // An action someone could tick before the role changed still needs its view.
+    boxes.filter((cb) => cb.checked && cb.dataset.requires).forEach((cb) => tickPermission(box, cb.dataset.requires, true));
+
+    const ticked = boxes.filter((cb) => cb.checked).length;
+    const summary = box.querySelector('[data-perm-summary]');
+    if (summary) {
+        summary.textContent = box.dataset.mode === 'person'
+            ? `Can do ${ticked} of ${boxes.length}: ${inheritedCount} from the role${ticked > inheritedCount ? `, ${ticked - inheritedCount} extra` : ''}.`
+            : `${ticked} of ${boxes.length} ticked.`;
+    }
+}
+
+function tickPermission(box, value, on) {
+    const cb = box.querySelector(`[data-perm="${value}"]`);
+    if (!cb || cb.disabled || cb.checked === on) return;
+    cb.checked = on;
+    cb.dataset.extra = on ? '1' : '0';
+}
+
+document.addEventListener('change', (event) => {
+    const form = event.target.closest('[data-permission-form]');
+    if (!form) return;
+    const cb = event.target.closest('[data-perm]');
+    if (cb) {
+        const box = cb.closest('[data-permissions]');
+        cb.dataset.extra = cb.checked ? '1' : '0';
+        if (cb.checked && cb.dataset.requires) tickPermission(box, cb.dataset.requires, true);
+        if (!cb.checked) box.querySelectorAll(`[data-requires="${cb.value}"]`).forEach((a) => tickPermission(box, a.value, false));
+    }
+    refreshPermissions(form);
+});
+
+document.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-select-group]');
+    if (!button) return;
+    const group = button.closest('[data-perm-group]');
+    const boxes = [...group.querySelectorAll('[data-perm]:not(:disabled)')];
+    const on = boxes.some((cb) => !cb.checked);
+    boxes.forEach((cb) => { cb.checked = on; cb.dataset.extra = on ? '1' : '0'; });
+    drawerDirty = true;
+    refreshPermissions(button.closest('[data-permission-form]'));
+});
+
+document.querySelectorAll('[data-permission-form]').forEach(refreshPermissions);

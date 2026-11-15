@@ -2,11 +2,12 @@
 
 namespace App\Modules\Billing\Http\Requests;
 
+use App\Modules\Access\Enums\Permission;
 use App\Support\Http\Requests\FormRequest;
 
 class CancelInvoiceRequest extends FormRequest
 {
-    protected array $roles = ['owner'];
+    protected ?Permission $permission = Permission::InvoicesCancel;
 
     public function rules(): array
     {

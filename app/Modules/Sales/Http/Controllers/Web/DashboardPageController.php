@@ -20,7 +20,7 @@ class DashboardPageController
 
         return view('sales::dashboard', ['period' => $period]
             + $dashboard->for($period, $scope, $request->filters())
-            + ['money' => $dashboard->money($period, $scope, withPayroll: $user->hasRole('accounts'))]
+            + ['money' => $dashboard->money($period, $scope, withPayroll: $user->can('payroll.view'))]
             + ['options' => [
                 'distributor' => ['All distributors', $distributors->visible($scope, ['id', 'name'])],
                 'rep' => ['All medical reps', $reps->all(['id', 'name'], orderBy: 'name')],

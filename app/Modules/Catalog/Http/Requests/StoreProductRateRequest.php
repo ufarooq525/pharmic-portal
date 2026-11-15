@@ -2,11 +2,12 @@
 
 namespace App\Modules\Catalog\Http\Requests;
 
+use App\Modules\Access\Enums\Permission;
 use App\Support\Http\Requests\FormRequest;
 
 class StoreProductRateRequest extends FormRequest
 {
-    protected array $roles = ['owner'];
+    protected ?Permission $permission = Permission::ProductsRates;
 
     public function rules(): array
     {

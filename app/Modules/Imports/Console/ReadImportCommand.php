@@ -3,7 +3,6 @@
 namespace App\Modules\Imports\Console;
 
 use App\Models\User;
-use App\Modules\Access\Enums\Role;
 use App\Modules\Distribution\Models\Distributor;
 use App\Modules\Imports\Parsers\PdfImportReader;
 use App\Modules\Imports\Actions\ConfirmImport;
@@ -39,7 +38,7 @@ class ReadImportCommand extends Command
         }
 
         $distributor = Distributor::where('name', 'like', $this->argument('distributor').'%')->first();
-        $user = $this->option('user') ? User::where('email', $this->option('user'))->first() : User::where('role', Role::Owner->value)->first();
+        $user = $this->option('user') ? User::where('email', $this->option('user'))->first() : User::whereHas('role', fn ($q) => $q->where('is_owner', true))->where('is_active', true)->first();
 
         if (! $distributor || ! $user) {
             $this->error(! $distributor ? 'No distributor starts with “'.$this->argument('distributor').'”.' : 'No user to record as the uploader. Run php artisan db:seed first.');

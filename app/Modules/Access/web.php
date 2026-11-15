@@ -3,6 +3,7 @@
 use App\Modules\Access\Http\Controllers\Web\AccountController;
 use App\Modules\Access\Http\Controllers\Web\ActivityController;
 use App\Modules\Access\Http\Controllers\Web\LoginController;
+use App\Modules\Access\Http\Controllers\Web\RoleController;
 use App\Modules\Access\Http\Controllers\Web\UserController;
 use Illuminate\Support\Facades\Route;
 
@@ -13,13 +14,17 @@ Route::middleware('guest')->group(function () {
 
 Route::post('logout', [LoginController::class, 'destroy'])->middleware('auth')->name('logout');
 
-Route::middleware(['auth', 'role:owner'])->prefix('users')->name('users.')->group(function () {
+Route::middleware(['auth', 'permission:users.manage'])->prefix('users')->name('users.')->group(function () {
     Route::get('/', [UserController::class, 'index'])->name('index');
     Route::post('/', [UserController::class, 'store'])->name('store');
-    Route::put('{user}', [UserController::class, 'update'])->name('update');
+    Route::put('{user}', [UserController::class, 'update'])->whereNumber('user')->name('update');
+
+    Route::post('roles', [RoleController::class, 'store'])->name('roles.store');
+    Route::put('roles/{role}', [RoleController::class, 'update'])->name('roles.update');
+    Route::delete('roles/{role}', [RoleController::class, 'destroy'])->name('roles.destroy');
 });
 
-Route::get('activity', ActivityController::class)->middleware(['auth', 'role:accounts'])->name('activity.index');
+Route::get('activity', ActivityController::class)->middleware(['auth', 'permission:activity.view'])->name('activity.index');
 
 Route::middleware('auth')->prefix('account')->name('account.')->controller(AccountController::class)->group(function () {
     Route::get('/', 'show')->name('show');

@@ -18,7 +18,7 @@ class ProductPageController
         return view('catalog::products', [
             'period' => Period::fromRequest($request),
             'products' => $products->withRatesAndAliases(),
-            'canEdit' => $request->user()->hasRole(),
+            'canEdit' => $request->user()->can('products.rates'),
             'editing' => $request->integer('edit') ?: null,
         ]);
     }

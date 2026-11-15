@@ -2,13 +2,14 @@
 
 namespace App\Modules\Imports\Http\Requests;
 
+use App\Modules\Access\Enums\Permission;
 use App\Modules\Distribution\Models\Distributor;
 use App\Support\Http\Requests\FormRequest;
 use Carbon\CarbonImmutable;
 
 class StoreImportRequest extends FormRequest
 {
-    protected array $roles = ['accounts', 'data_entry'];
+    protected ?Permission $permission = Permission::ImportsUpload;
 
     public function authorize(): bool
     {

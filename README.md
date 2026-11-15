@@ -14,7 +14,7 @@ sales (with that month's prices, sales tax and withholding tax), stock movements
 | Inventory | Opening, purchases, sold + bonus, returns, closing, value at cost and Ex-FP, each product's tax rates, months of cover |
 | Reports | Sales, customer-wise, bonus, percentage incentive, sales tax & WHT; filter by distributor, product, rep; CSV export that opens in Excel |
 | Products & taxes | Prices, sales tax %, withholding tax %, incentive % and bonus scheme per product, saved with an effective date |
-| Users & roles | Owner adds users, sets role and active status; table of what each role can do |
+| Users & roles | People tab: add people, set login type (staff or medical rep), role, extra permissions, distributor limits and status. Roles tab: create, edit and delete roles by ticking permissions. Owner role is fixed; there is always one active owner; nobody can give more than they have |
 
 Phase 2: invoices, distributor ledger and payments, MR payroll and payslips, WhatsApp sharing, MR self-service.
 

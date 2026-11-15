@@ -44,8 +44,8 @@ class InvoiceController
             'lines' => $lines,
             'totals' => $issued ? $issued->only(['units', 'bonus', 'value', 'sales_tax', 'withholding_tax', 'total']) : $this->invoices->totals($lines),
             'month' => $this->invoices->forMonth($period, $allowed),
-            'canIssue' => $request->user()->hasRole('accounts'),
-            'canCancel' => $request->user()->hasRole('owner'),
+            'canIssue' => $request->user()->can('invoices.issue'),
+            'canCancel' => $request->user()->can('invoices.cancel'),
         ]);
     }
 

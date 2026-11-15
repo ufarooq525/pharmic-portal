@@ -2,11 +2,12 @@
 
 namespace App\Modules\Sales\Http\Requests;
 
+use App\Modules\Access\Enums\Permission;
 use App\Support\Http\Requests\FormRequest;
 
 class StoreStockReceiptRequest extends FormRequest
 {
-    protected array $roles = ['accounts'];
+    protected ?Permission $permission = Permission::StockReceive;
 
     public function rules(): array
     {

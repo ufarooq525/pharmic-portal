@@ -1,7 +1,7 @@
 @php
     $confirmed = \App\Modules\Imports\Enums\ImportStatus::Confirmed;
     $layouts = \App\Modules\Imports\Enums\ReportLayout::options();
-    $canUpload = auth()->user()->hasRole('accounts', 'data_entry');
+    $canUpload = auth()->user()->can('imports.upload');
     $q = ['period' => $period->format('Y-m')];
     // Default to the first distributor whose file is not confirmed yet.
     $current = $distributors->firstWhere('id', $selected)
@@ -38,7 +38,7 @@
                     <div class="flex flex-wrap gap-2">
                         <a href="{{ route('imports.show', $currentImport) }}" class="btn btn-primary">{{ $currentImport->status === $confirmed ? 'Open the customer-wise data' : 'Review and confirm' }}</a>
                         <a href="{{ route('imports.file', $currentImport) }}" class="btn">Open the PDF</a>
-                        @if ($currentImport->status === $confirmed && auth()->user()->hasRole())
+                        @if ($currentImport->status === $confirmed && auth()->user()->can('imports.revert'))
                             <form method="post" action="{{ route('imports.reverse', $currentImport) }}" data-confirm="Revert {{ possessive($current->name) }} {{ $period->format('F') }} import and remove the file? Its sales come out, the units go back into stock and any invoice for the month is cancelled with a credit note.">
                                 @csrf
                                 <input type="hidden" name="remove_file" value="1">

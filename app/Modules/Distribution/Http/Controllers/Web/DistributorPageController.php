@@ -33,7 +33,8 @@ class DistributorPageController
             'current' => $current,
             'aliases' => $current ? $this->aliases->forDistributor($current->id) : collect(),
             'lastImport' => $current ? $this->imports->latestFor($current->id) : null,
-            'canEdit' => $request->user()->hasRole('owner'),
+            'canEdit' => $request->user()->can('distributors.edit'),
+            'canUnlink' => $request->user()->can('distributors.unlink'),
         ]);
     }
 

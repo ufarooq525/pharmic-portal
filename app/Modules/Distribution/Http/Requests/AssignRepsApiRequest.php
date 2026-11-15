@@ -2,13 +2,14 @@
 
 namespace App\Modules\Distribution\Http\Requests;
 
+use App\Modules\Access\Enums\Permission;
 use App\Support\Http\Requests\FormRequest;
 use Illuminate\Validation\Validator;
 
 /** API form: up to two reps with explicit shares that add up to 100%. */
 class AssignRepsApiRequest extends FormRequest
 {
-    protected array $roles = ['accounts', 'data_entry'];
+    protected ?Permission $permission = Permission::CustomersAssign;
 
     public function authorize(): bool
     {

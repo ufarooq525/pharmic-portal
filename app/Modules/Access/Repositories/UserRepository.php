@@ -15,7 +15,7 @@ class UserRepository extends Repository
 
     public function forAdmin(): Collection
     {
-        return $this->query()->with('medicalRep.territory')->orderByDesc('is_active')->orderBy('name')->get();
+        return $this->query()->with(['medicalRep.territory', 'role.permissionRows', 'extraPermissionRows'])->orderByDesc('is_active')->orderBy('name')->get();
     }
 
     public function activeByEmail(string $email): ?User

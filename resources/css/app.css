@@ -157,6 +157,25 @@
     .field[aria-invalid='true'] { border-color: var(--sky-bad-fg); }
     .label { @apply text-[12px] font-bold text-muted; }
 
+    /* Big radio choices (e.g. type of login) */
+    .choice { @apply flex cursor-pointer items-start gap-2.5 rounded-[14px] border border-field-line bg-surface px-3.5 py-3; transition: border-color .15s, background-color .15s; }
+    .choice:has(:checked) { border-color: var(--sky-accent); background: color-mix(in srgb, var(--sky-accent) 7%, var(--sky-surface)); }
+    .choice:has(:focus-visible) { box-shadow: 0 0 0 3px color-mix(in srgb, var(--sky-accent) 25%, transparent); }
+    .choice input { @apply mt-1 size-4 shrink-0; }
+
+    /* Permission checklist, grouped by area */
+    .perm-groups { @apply grid gap-3 sm:grid-cols-2; }
+    .perm-group { @apply flex flex-col gap-1 rounded-[14px] bg-sunk px-3.5 py-3; }
+    .perm { @apply flex cursor-pointer items-start gap-2.5 rounded-lg py-1.5 text-[13.5px]; }
+    .perm input { @apply mt-0.5 shrink-0; }
+    .perm:has(input:disabled) { cursor: default; }
+    .perm-name { @apply font-semibold; }
+    .perm-tag { @apply ml-1.5 inline-block rounded-full bg-info-soft px-2 py-px align-middle text-[11px] font-bold text-info; }
+    .perm-tag[hidden] { display: none; }
+    .perm-tag-mute { @apply bg-mute-soft text-mute; }
+    .perm-hint { @apply block text-[12px] text-muted; }
+    .link-btn { @apply min-h-8 rounded-md border-0 bg-transparent px-2 text-[12.5px] font-bold text-accent hover:underline; }
+
     /* Chips */
     .chip { @apply inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-[9px] py-0.5 text-[11.5px] font-bold no-underline; }
     .chip-ok { @apply bg-ok-soft text-ok; }

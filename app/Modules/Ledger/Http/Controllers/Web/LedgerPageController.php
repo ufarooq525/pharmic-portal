@@ -37,8 +37,8 @@ class LedgerPageController
             'current' => $current,
             'year' => $year,
             'statement' => $current ? $this->ledger->statement($current, $year) : null,
-            'canRecord' => $request->user()->hasRole('accounts'),
-            'canRemove' => $request->user()->hasRole('owner'),
+            'canRecord' => $request->user()->can('ledger.record'),
+            'canRemove' => $request->user()->can('ledger.remove'),
         ]);
     }
 

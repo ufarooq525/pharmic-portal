@@ -111,14 +111,14 @@
                     @if ($aliases->isNotEmpty())
                         <div class="table-wrap">
                             <table class="data">
-                                <thead><tr><th scope="col">Item code</th><th scope="col">Name in the file</th><th scope="col">Product</th>@if ($canEdit)<th scope="col"><span class="sr-only">Actions</span></th>@endif</tr></thead>
+                                <thead><tr><th scope="col">Item code</th><th scope="col">Name in the file</th><th scope="col">Product</th>@if ($canUnlink)<th scope="col"><span class="sr-only">Actions</span></th>@endif</tr></thead>
                                 <tbody>
                                 @foreach ($aliases as $a)
                                     <tr>
                                         <td class="num text-muted">{{ $a->code_in_file ?? '–' }}</td>
                                         <td class="font-mono text-[13px]">{{ $a->name_in_file }}</td>
                                         <td class="font-semibold">{{ $a->product->name }}</td>
-                                        @if ($canEdit)
+                                        @if ($canUnlink)
                                             <td class="text-right">
                                                 <form method="post" action="{{ route('distributors.unlink', [$current, $a]) }}" data-ajax data-confirm="Unlink “{{ $a->name_in_file }}”?">
                                                     @csrf

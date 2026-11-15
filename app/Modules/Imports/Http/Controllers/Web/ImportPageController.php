@@ -93,10 +93,10 @@ class ImportPageController
             'attentionOnly' => $attentionOnly,
             'shown' => $attentionOnly ? array_values(array_filter($data['customers'], fn ($c) => $c['attention'])) : $data['customers'],
             'products' => $products->active(['id', 'name']),
-            'canMap' => $user->hasRole('accounts', 'data_entry') && ! $import->isConfirmed(),
-            'canConfirm' => $user->hasRole('accounts') && $import->status === ImportStatus::NeedsReview && $data['unmapped'] === [],
-            'canReverse' => $user->hasRole() && $import->isConfirmed(),
-            'canDiscard' => $user->hasRole('accounts', 'data_entry') && ! $import->isConfirmed(),
+            'canMap' => $user->can('imports.upload') && ! $import->isConfirmed(),
+            'canConfirm' => $user->can('imports.confirm') && $import->status === ImportStatus::NeedsReview && $data['unmapped'] === [],
+            'canReverse' => $user->can('imports.revert') && $import->isConfirmed(),
+            'canDiscard' => $user->can('imports.upload') && ! $import->isConfirmed(),
         ]);
     }
 

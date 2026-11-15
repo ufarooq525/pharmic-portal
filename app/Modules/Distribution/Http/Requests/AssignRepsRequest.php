@@ -2,11 +2,12 @@
 
 namespace App\Modules\Distribution\Http\Requests;
 
+use App\Modules\Access\Enums\Permission;
 use App\Support\Http\Requests\FormRequest;
 
 class AssignRepsRequest extends FormRequest
 {
-    protected array $roles = ['accounts', 'data_entry'];
+    protected ?Permission $permission = Permission::CustomersAssign;
 
     public function rules(): array
     {

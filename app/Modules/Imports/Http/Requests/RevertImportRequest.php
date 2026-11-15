@@ -2,11 +2,12 @@
 
 namespace App\Modules\Imports\Http\Requests;
 
+use App\Modules\Access\Enums\Permission;
 use App\Support\Http\Requests\FormRequest;
 
 class RevertImportRequest extends FormRequest
 {
-    protected array $roles = ['owner'];
+    protected ?Permission $permission = Permission::ImportsRevert;
 
     public function rules(): array
     {

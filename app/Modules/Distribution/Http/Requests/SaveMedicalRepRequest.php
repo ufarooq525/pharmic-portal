@@ -2,11 +2,12 @@
 
 namespace App\Modules\Distribution\Http\Requests;
 
+use App\Modules\Access\Enums\Permission;
 use App\Support\Http\Requests\FormRequest;
 
 class SaveMedicalRepRequest extends FormRequest
 {
-    protected array $roles = ['accounts'];
+    protected ?Permission $permission = Permission::RepsEdit;
 
     public function rules(): array
     {

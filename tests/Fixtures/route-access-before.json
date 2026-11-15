@@ -1,0 +1,186 @@
+{
+    "DELETE distributors/{distributor}/aliases/{alias}": [],
+    "DELETE imports/{import}": [
+        "accounts",
+        "data_entry"
+    ],
+    "DELETE ledger/payments/{payment}": [],
+    "GET activity": [
+        "accounts"
+    ],
+    "GET api/v1/customers": [
+        "accounts",
+        "data_entry",
+        "viewer"
+    ],
+    "GET api/v1/dashboard": [
+        "accounts",
+        "data_entry",
+        "viewer"
+    ],
+    "GET api/v1/distributors": [
+        "accounts",
+        "data_entry",
+        "viewer"
+    ],
+    "GET api/v1/imports": [
+        "accounts",
+        "data_entry",
+        "viewer"
+    ],
+    "GET api/v1/imports/{import}": [
+        "accounts",
+        "data_entry",
+        "viewer"
+    ],
+    "GET api/v1/medical-reps": [
+        "accounts",
+        "data_entry",
+        "viewer"
+    ],
+    "GET api/v1/products": [
+        "accounts",
+        "data_entry",
+        "viewer"
+    ],
+    "GET customers": [
+        "accounts",
+        "data_entry",
+        "viewer"
+    ],
+    "GET distributors": [
+        "accounts",
+        "data_entry",
+        "viewer"
+    ],
+    "GET imports": [
+        "accounts",
+        "data_entry",
+        "viewer"
+    ],
+    "GET imports/review": [
+        "accounts",
+        "data_entry",
+        "viewer"
+    ],
+    "GET imports/{import}": [
+        "accounts",
+        "data_entry",
+        "viewer"
+    ],
+    "GET imports/{import}/file": [
+        "accounts",
+        "data_entry",
+        "viewer"
+    ],
+    "GET inventory": [
+        "accounts",
+        "data_entry",
+        "viewer"
+    ],
+    "GET inventory/receipts/template": [
+        "accounts",
+        "data_entry",
+        "viewer"
+    ],
+    "GET invoices": [
+        "accounts"
+    ],
+    "GET invoices/{invoice}/print": [
+        "accounts"
+    ],
+    "GET ledger": [
+        "accounts",
+        "viewer"
+    ],
+    "GET ledger/{distributor}/export": [
+        "accounts",
+        "viewer"
+    ],
+    "GET master-data/name-matching": [
+        "accounts",
+        "data_entry",
+        "viewer"
+    ],
+    "GET master-data/reps": [
+        "accounts",
+        "data_entry",
+        "viewer"
+    ],
+    "GET payroll": [
+        "accounts"
+    ],
+    "GET products": [
+        "accounts",
+        "data_entry",
+        "viewer"
+    ],
+    "GET reports/{type?}": [
+        "accounts",
+        "data_entry",
+        "viewer"
+    ],
+    "GET reports/{type}/export": [
+        "accounts",
+        "data_entry",
+        "viewer"
+    ],
+    "GET users": [],
+    "POST api/v1/imports": [
+        "accounts",
+        "data_entry"
+    ],
+    "POST api/v1/imports/{import}/confirm": [
+        "accounts"
+    ],
+    "POST api/v1/imports/{import}/map-product": [
+        "accounts",
+        "data_entry"
+    ],
+    "POST api/v1/products/{product}/rates": [],
+    "POST imports": [
+        "accounts",
+        "data_entry"
+    ],
+    "POST imports/{import}/confirm": [
+        "accounts"
+    ],
+    "POST imports/{import}/map": [
+        "accounts",
+        "data_entry"
+    ],
+    "POST imports/{import}/reverse": [],
+    "POST inventory/receipts": [
+        "accounts"
+    ],
+    "POST inventory/receipts/{receipt}/revert": [
+        "accounts"
+    ],
+    "POST invoices": [
+        "accounts"
+    ],
+    "POST invoices/{invoice}/cancel": [],
+    "POST ledger/{distributor}/payments": [
+        "accounts"
+    ],
+    "POST master-data/reps": [
+        "accounts"
+    ],
+    "POST products/{product}/rates": [],
+    "POST users": [],
+    "PUT api/v1/customers/{customer}/reps": [
+        "accounts"
+    ],
+    "PUT customers/{customer}/reps": [
+        "accounts",
+        "data_entry"
+    ],
+    "PUT distributors/{distributor}": [],
+    "PUT master-data/reps/{rep}": [
+        "accounts"
+    ],
+    "PUT payroll/{rep}": [
+        "accounts"
+    ],
+    "PUT users/{user}": []
+}

@@ -39,7 +39,7 @@ class PortalTest extends TestCase
             'period_from' => '2026-10-01', 'period_to' => '2026-10-31', 'file_units' => 8, 'file_value' => 3336, 'parsed_units' => 8, 'parsed_value' => 3336,
             'checks' => [['key' => 'totals', 'ok' => true, 'message' => 'Units and value match the grand total printed in the file.']],
             'customers' => [['code' => '101', 'name' => 'ZAMAN MEDICAL STORE', 'area' => 'TIMERGARA']],
-            'uploaded_by' => User::where('role', 'owner')->value('id'),
+            'uploaded_by' => User::whereHas('role', fn ($q) => $q->where('is_owner', true))->value('id'),
         ]);
 
         $row = ['customer_code' => '101', 'customer_name' => 'ZAMAN MEDICAL STORE', 'area' => 'TIMERGARA', 'trade_price' => 417];
@@ -55,7 +55,7 @@ class PortalTest extends TestCase
 
     private function owner(): User
     {
-        return User::where('role', 'owner')->firstOrFail();
+        return User::whereHas('role', fn ($q) => $q->where('is_owner', true))->firstOrFail();
     }
 
     public function test_guests_are_sent_to_login_and_nothing_is_indexable(): void
@@ -113,8 +113,9 @@ class PortalTest extends TestCase
         $this->get('/customers?period=2026-10')->assertOk()->assertSee('ZAMAN MEDICAL STORE');
         $this->get('/inventory?period=2026-10')->assertOk()->assertSee('Gynofol Tab');
         $this->get('/products?period=2026-10')->assertOk()->assertSee('withholding tax rate');
-        $this->get('/users')->assertOk()->assertSee('Data scope');
-        $this->get('/users?tab=permissions')->assertOk()->assertSee('Own territory');
+        $this->get('/users')->assertOk()->assertSee('Which distributors they see')->assertSee('What they can do');
+        $this->get('/users?tab=roles')->assertOk()->assertSee('Data entry')->assertSee('What this role can do');
+        $this->get('/users?tab=roles&role='.\App\Modules\Access\Models\Role::where('name', 'Accounts')->value('id'))->assertOk()->assertSee('Edit Accounts');
         $this->get('/invoices?period=2026-10&to=d:'.Distributor::where('name', 'Irfan Enterprises')->value('id'))->assertOk()->assertSee('Gynofol Tab')->assertSee('Issue invoice');
         $this->get('/payroll?period=2026-10')->assertOk()->assertSee('Uzma Bibi');
         $this->get('/activity')->assertOk()->assertSee('Who did what and when');
@@ -319,7 +320,7 @@ class PortalTest extends TestCase
         app(ConfirmImport::class)->handle($this->import(), $this->owner());
         $rep = MedicalRep::orderBy('id')->firstOrFail();
         Customer::firstOrFail()->medicalReps()->sync([$rep->id => ['share_percent' => 100]]);
-        $user = User::factory()->create(['role' => 'medical_rep', 'medical_rep_id' => $rep->id]);
+        $user = User::factory()->role('medical_rep')->create(['medical_rep_id' => $rep->id]);
         $this->actingAs($user);
 
         $this->get('/dashboard')->assertRedirect(route('my.index'));

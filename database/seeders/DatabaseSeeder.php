@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use App\Modules\Distribution\Enums\BonusSource;
 use App\Modules\Sales\Enums\StockMovementType;
 use App\Models\User;
+use App\Modules\Access\Models\Role;
 use App\Modules\Catalog\Models\Product;
 use App\Modules\Distribution\Models\Distributor;
 use App\Modules\Distribution\Models\MedicalRep;
@@ -20,7 +21,7 @@ class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
-        User::updateOrCreate(['email' => 'owner@example.com'], ['name' => 'Owner', 'password' => env('SEED_OWNER_PASSWORD') ?: 'change-me-now', 'role' => 'owner']);
+        User::updateOrCreate(['email' => 'owner@example.com'], ['name' => 'Owner', 'password' => env('SEED_OWNER_PASSWORD') ?: 'change-me-now', 'login_type' => 'staff', 'role_id' => Role::where('is_owner', true)->value('id')]);
 
         // code, name, Ex-FP, trade price, cost, opening units, sales tax %, WHT %, incentive %, bonus buy+free
         $products = [
