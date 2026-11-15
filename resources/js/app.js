@@ -819,7 +819,8 @@ let shownPage = location.pathname + location.search;
 
 // Show the new page: scroll to its #hash, keep the place on the same page, start at the top of a new one.
 function showSoftPage(doc, url, push, quiet = false) {
-    const samePage = url.pathname === location.pathname;
+    // Tabs, page numbers and filters (quiet) keep your place; a new page starts at the top.
+    const samePage = quiet || url.pathname === location.pathname;
     if (push && url.href !== location.href) history.pushState({ soft: true }, '', url.href);
     shownPage = url.pathname + url.search;
     setSidebar(false);
@@ -863,7 +864,9 @@ document.addEventListener('click', (event) => {
     if (url.pathname === location.pathname && url.search === location.search && url.hash) return;
     if (!isSoftTarget(url, a)) return;
     event.preventDefault();
-    softNavigate(url);
+    // Tabs, page numbers and links to the same page update the content in place: no fade, no jump.
+    const inPlace = url.pathname === location.pathname || Boolean(a.closest('#main .tabs, #main nav[aria-label="Pages"]'));
+    softNavigate(url, true, inPlace);
 });
 
 document.addEventListener('submit', (event) => {
@@ -876,7 +879,8 @@ document.addEventListener('submit', (event) => {
     // Typing in a search box: swap without the fade, so the list keeps up with the typing.
     const typing = document.activeElement?.matches?.('input[type="search"]') && form.contains(document.activeElement);
     rememberSearch(typing ? document.activeElement : null);
-    softNavigate(url, true, typing);
+    // Filters and searches in the page update it in place; the sidebar month picker reloads the view with a fade.
+    softNavigate(url, true, Boolean(form.closest('#main')));
 }, true);
 
 history.replaceState({ soft: true, ...(history.state || {}) }, '', location.href);
