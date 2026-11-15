@@ -13,7 +13,7 @@
     </div>
 
     <section class="card" aria-labelledby="pay-h">
-        <h2 id="pay-h" class="card-title">{{ $period->format('F Y') }} payroll</h2>
+        <h2 id="pay-h" class="card-title card-title-icon"><span class="card-icon" style="--tone: var(--sky-c4)"><x-icon name="wallet" /></span>{{ $period->format('F Y') }} payroll</h2>
         <div class="table-wrap">
             <table class="data">
                 <thead>

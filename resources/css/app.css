@@ -159,7 +159,7 @@
     .empty-state-icon { @apply mb-1 flex size-11 items-center justify-center rounded-full bg-sunk text-muted; }
 
     /* KPI tiles */
-    .kpi { @apply relative flex flex-col gap-2 overflow-hidden rounded-[18px] bg-surface p-[18px]; box-shadow: var(--sky-shadow); }
+    .kpi { --tone: var(--sky-c1); @apply relative flex flex-col gap-2 overflow-hidden rounded-[18px] bg-surface p-[18px]; box-shadow: var(--sky-shadow); }
     .kpi::before { content: ''; position: absolute; inset: 0 0 auto 0; height: 3px; background: var(--tone, var(--sky-accent)); opacity: .85; }
     .kpi-icon { @apply flex size-9 flex-none items-center justify-center rounded-xl;
         color: var(--tone); background: color-mix(in oklab, var(--tone) 13%, transparent); }
@@ -313,6 +313,22 @@
     .hero-sub { color: #c3cbe0; }
     .btn-ghost-dark { @apply border-white/25 bg-white/10 text-white hover:border-white/60; }
     .btn-light { @apply border-white bg-white text-[#141b2b] hover:bg-[#eaf0fc]; }
+    /* Page banner (every page's header): buttons in it switch to the light / ghost styles */
+    .page-hero { @apply p-5 sm:px-6 sm:py-5; }
+    .page-hero-icon { @apply mt-0.5 flex size-12 flex-none items-center justify-center rounded-2xl; background: rgb(255 255 255 / 0.1); color: #c9d6ff; }
+    .page-hero .btn { @apply border-white/25 bg-white/10 text-white hover:border-white/60; }
+    .page-hero .btn-primary { @apply border-white bg-white text-[#141b2b] hover:bg-[#eaf0fc]; }
+    @media (max-width: 639px) { .page-hero-icon { display: none; } }
+
+    /* Card title with a tinted icon (pages other than the dashboard) */
+    .card-title-icon { @apply flex items-center gap-2.5 text-[16px]; }
+
+    /* KPI tiles take the chart colours in turn unless the page sets a tone */
+    .kpi:nth-child(6n+2) { --tone: var(--sky-c2); }
+    .kpi:nth-child(6n+3) { --tone: var(--sky-c6); }
+    .kpi:nth-child(6n+4) { --tone: var(--sky-c3); }
+    .kpi:nth-child(6n+5) { --tone: var(--sky-c4); }
+    .kpi:nth-child(6n+6) { --tone: var(--sky-c5); }
     /* One segment per distributor: green when confirmed, amber when it needs a look, faint when no file yet */
     .close-track { @apply flex h-2.5 gap-1; }
     .close-seg { @apply flex-1 rounded-full; background: rgb(255 255 255 / 0.16); }

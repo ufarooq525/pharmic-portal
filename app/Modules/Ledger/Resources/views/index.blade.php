@@ -21,7 +21,7 @@
     </div>
 
     <section class="card" aria-labelledby="bal-h">
-        <h2 id="bal-h" class="card-title">Balances for {{ $period->format('F Y') }}</h2>
+        <h2 id="bal-h" class="card-title card-title-icon"><span class="card-icon" style="--tone: var(--sky-c6)"><x-icon name="cash" /></span>Balances for {{ $period->format('F Y') }}</h2>
         <div class="table-wrap">
             <table class="data">
                 <thead>
@@ -91,7 +91,7 @@
 
                 <section class="card" aria-labelledby="stmt-h">
                     <div class="flex flex-wrap items-center justify-between gap-3">
-                        <h2 id="stmt-h" class="card-title">Statement</h2>
+                        <h2 id="stmt-h" class="card-title card-title-icon"><span class="card-icon" style="--tone: var(--sky-c1)"><x-icon name="book" /></span>Statement</h2>
                         @if ($canRecord)<a href="#pay-form" data-drawer="#pay-form" class="btn btn-primary btn-sm">+ Record payment</a>@endif
                     </div>
                     <div class="table-wrap">

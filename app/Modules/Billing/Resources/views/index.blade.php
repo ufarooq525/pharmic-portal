@@ -6,7 +6,7 @@
 <x-layouts.app title="Invoices" description="Invoices for a distributor or a single customer from confirmed sales, with sales tax and withholding tax.">
     <x-page-header title="Invoices" sub="Pick a distributor or any single customer. Lines, bonus, sales tax and withholding tax fill in from confirmed sales." />
 
-    <form method="get" class="flex flex-wrap items-end gap-3">
+    <form method="get" class="toolbar" aria-label="Bill to">
         <input type="hidden" name="period" value="{{ $period->format('Y-m') }}">
         <div class="flex flex-col gap-1.5">
             <label for="bill-to" class="label">Bill to</label>
@@ -93,7 +93,7 @@
     @endif
 
     <section id="issued" class="card scroll-mt-4" aria-labelledby="list-h">
-        <h2 id="list-h" class="card-title">Issued in {{ $period->format('F Y') }}</h2>
+        <h2 id="list-h" class="card-title card-title-icon"><span class="card-icon" style="--tone: var(--sky-c3)"><x-icon name="receipt" /></span>Issued in {{ $period->format('F Y') }}</h2>
         @if ($month->isNotEmpty())
             <div class="table-wrap">
                 <table class="data">

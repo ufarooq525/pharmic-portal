@@ -26,7 +26,7 @@
         <section class="card" aria-labelledby="roles-h">
             <div class="flex flex-wrap items-center justify-between gap-3">
                 <div>
-                    <h2 id="roles-h" class="card-title">Roles</h2>
+                    <h2 id="roles-h" class="card-title card-title-icon"><span class="card-icon" style="--tone: var(--sky-c4)"><x-icon name="shield" /></span>Roles</h2>
                     <p class="m-0 text-[13px] text-muted">Changing a role changes it for everyone who has it, from their next page.</p>
                 </div>
                 <a href="#role-form" data-drawer="#role-form" data-drawer-title="Add a role" class="btn btn-primary btn-sm">+ Add role</a>
@@ -98,7 +98,7 @@
     @else
         <section class="card" aria-labelledby="users-h">
             <div class="flex flex-wrap items-center justify-between gap-3">
-                <h2 id="users-h" class="card-title">People</h2>
+                <h2 id="users-h" class="card-title card-title-icon"><span class="card-icon" style="--tone: var(--sky-c1)"><x-icon name="people" /></span>People</h2>
                 <a href="#user-form" data-drawer="#user-form" data-drawer-title="Add a person" class="btn btn-primary btn-sm">+ Add person</a>
             </div>
             @include('access::_list-search', ['tabValue' => null, 'placeholder' => 'Name, email or role'])
@@ -149,11 +149,11 @@
                     @unless ($editUser)
                         <div class="flex flex-col gap-1.5"><label for="u-n" class="label">Name</label><input id="u-n" name="name" value="{{ old('name') }}" required maxlength="100" class="field" autocomplete="off"></div>
                         <div class="flex flex-col gap-1.5"><label for="u-e" class="label">Email (their login)</label><input id="u-e" name="email" type="email" value="{{ old('email') }}" required class="field" autocomplete="off"></div>
-                        <div class="flex flex-col gap-1.5 sm:col-span-2"><label for="u-p" class="label">Temporary password (at least 10 characters)</label><input id="u-p" name="password" type="password" minlength="10" required autocomplete="new-password" class="field"></div>
+                        <div class="flex flex-col gap-1.5 sm:col-span-2"><label for="u-p" class="label">Temporary password (at least 10 characters)</label><x-password id="u-p" name="password" minlength="10" required autocomplete="new-password" /></div>
                     @else
                         <div class="flex flex-col gap-1.5">
                             <label for="u-pw" class="label">New password (leave empty to keep)</label>
-                            <input id="u-pw" name="password" type="password" minlength="10" autocomplete="new-password" class="field">
+                            <x-password id="u-pw" name="password" minlength="10" autocomplete="new-password" />
                         </div>
                         <div class="flex flex-col gap-1.5">
                             <label for="u-a" class="label">Status</label>

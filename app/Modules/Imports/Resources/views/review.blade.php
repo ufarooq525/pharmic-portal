@@ -94,7 +94,7 @@
 
     <section class="card" aria-labelledby="cust-h">
         <div class="flex flex-wrap items-center justify-between gap-3">
-            <h2 id="cust-h" class="card-title">Customer-wise data</h2>
+            <h2 id="cust-h" class="card-title card-title-icon"><span class="card-icon" style="--tone: var(--sky-c1)"><x-icon name="store" /></span>Customer-wise data</h2>
             <nav class="flex flex-wrap gap-1.5" aria-label="Filter customers">
                 <a href="{{ request()->fullUrlWithQuery(['show' => null]) }}" class="pill" @if (! $attentionOnly) aria-current="page" @endif>All · {{ count($customers) }}</a>
                 <a href="{{ request()->fullUrlWithQuery(['show' => 'attention']) }}" class="pill" @if ($attentionOnly) aria-current="page" @endif>Needs attention · {{ $attention }}</a>

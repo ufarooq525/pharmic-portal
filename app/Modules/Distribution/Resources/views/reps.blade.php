@@ -3,7 +3,7 @@
 
     <section class="card" aria-labelledby="reps-h">
         <div class="flex flex-wrap items-center justify-between gap-3">
-            <h2 id="reps-h" class="card-title">Medical reps</h2>
+            <h2 id="reps-h" class="card-title card-title-icon"><span class="card-icon" style="--tone: var(--sky-c4)"><x-icon name="award" /></span>Medical reps</h2>
             @if ($canEdit)<a href="#rep-form" data-drawer="#rep-form" data-drawer-title="Add a medical rep" class="btn btn-primary btn-sm">+ Add rep</a>@endif
         </div>
         <div class="table-wrap">

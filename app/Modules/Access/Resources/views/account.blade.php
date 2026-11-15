@@ -8,15 +8,15 @@
             @method('put')
             <div class="flex flex-col gap-1.5">
                 <label for="pw-current" class="label">Current password</label>
-                <input id="pw-current" name="current_password" type="password" required autocomplete="current-password" class="field">
+                <x-password id="pw-current" name="current_password" required autocomplete="current-password" />
             </div>
             <div class="flex flex-col gap-1.5">
                 <label for="pw-new" class="label">New password (at least 10 characters)</label>
-                <input id="pw-new" name="password" type="password" required minlength="10" autocomplete="new-password" class="field">
+                <x-password id="pw-new" name="password" required minlength="10" autocomplete="new-password" />
             </div>
             <div class="flex flex-col gap-1.5">
                 <label for="pw-confirm" class="label">New password again</label>
-                <input id="pw-confirm" name="password_confirmation" type="password" required minlength="10" autocomplete="new-password" class="field">
+                <x-password id="pw-confirm" name="password_confirmation" required minlength="10" autocomplete="new-password" />
             </div>
             <div class="flex gap-2"><button class="btn btn-primary" data-busy-label="Saving…">Change password</button></div>
         </form>

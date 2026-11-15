@@ -11,7 +11,7 @@
     </div>
 
     <section class="card" aria-labelledby="my-h">
-        <h2 id="my-h" class="card-title">My customers</h2>
+        <h2 id="my-h" class="card-title card-title-icon"><span class="card-icon" style="--tone: var(--sky-c1)"><x-icon name="store" /></span>My customers</h2>
         @if ($customers->isNotEmpty())
             <div class="table-wrap">
                 <table class="data">

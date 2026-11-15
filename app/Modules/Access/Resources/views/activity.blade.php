@@ -3,7 +3,7 @@
 
     <section class="card" aria-labelledby="act-h">
         <div class="flex flex-wrap items-end justify-between gap-3">
-            <h2 id="act-h" class="card-title">Recent activity</h2>
+            <h2 id="act-h" class="card-title card-title-icon"><span class="card-icon" style="--tone: var(--sky-c7)"><x-icon name="clock" /></span>Recent activity</h2>
             <form method="get" class="flex items-end gap-2">
                 <label for="act-filter" class="sr-only">Action</label>
                 <select id="act-filter" name="action" class="field w-auto" data-autosubmit>

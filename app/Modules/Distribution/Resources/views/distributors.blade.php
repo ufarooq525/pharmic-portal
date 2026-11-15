@@ -107,7 +107,7 @@
                 @endif
 
                 <section id="names" class="card scroll-mt-4" aria-labelledby="alias-h">
-                    <h2 id="alias-h" class="card-title">How {{ str($current->name)->before(' ') }} names the products</h2>
+                    <h2 id="alias-h" class="card-title card-title-icon"><span class="card-icon" style="--tone: var(--sky-c2)"><x-icon name="link" /></span>How {{ str($current->name)->before(' ') }} names the products</h2>
                     @if ($aliases?->isNotEmpty())
                         <div class="table-wrap">
                             <table class="data">

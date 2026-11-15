@@ -1,6 +1,7 @@
-@props(['label', 'value', 'note' => null, 'delta' => null, 'icon' => null, 'tone' => 'c1'])
-{{-- $delta: percentage change against the previous month, or null when there is nothing to compare. --}}
-<div {{ $attributes->class(['kpi']) }} style="--tone: var(--sky-{{ $tone }})">
+@props(['label', 'value', 'note' => null, 'delta' => null, 'icon' => null, 'tone' => null])
+{{-- $delta: percentage change against the previous month, or null when there is nothing to compare.
+     $tone: a chart colour (c1…c7); without one, tiles take the colours in turn. --}}
+<div {{ $attributes->class(['kpi']) }} @if ($tone) style="--tone: var(--sky-{{ $tone }})" @endif>
     <span class="flex items-center justify-between gap-2">
         <span class="kpi-label">{{ $label }}</span>
         @if ($icon)

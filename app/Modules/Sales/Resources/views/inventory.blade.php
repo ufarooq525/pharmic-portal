@@ -18,7 +18,7 @@
     </div>
 
     <section class="card flex flex-col gap-4" aria-labelledby="inv-h">
-        <h2 id="inv-h" class="card-title">Stock by product</h2>
+        <h2 id="inv-h" class="card-title card-title-icon"><span class="card-icon" style="--tone: var(--sky-c5)"><x-icon name="warehouse" /></span>Stock by product</h2>
         <div class="table-wrap">
             <table class="data">
                 <thead>
@@ -118,7 +118,7 @@
     @endif
 
     <section id="receipts" class="card scroll-mt-4" aria-labelledby="rcpt-h">
-        <h2 id="rcpt-h" class="card-title">Stock receipts</h2>
+        <h2 id="rcpt-h" class="card-title card-title-icon"><span class="card-icon" style="--tone: var(--sky-c2)"><x-icon name="truck" /></span>Stock receipts</h2>
         @if ($receipts->isNotEmpty())
             <div class="table-wrap">
                 <table class="data">

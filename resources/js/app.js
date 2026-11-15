@@ -42,7 +42,9 @@ document.addEventListener('click', (event) => {
     const button = event.target.closest('[data-password-toggle]');
     if (!button) return;
 
-    const input = document.getElementById(button.dataset.passwordToggle);
+    // The input beside the button (drawer copies rename ids, so don't look it up by id).
+    const input = button.parentElement.querySelector('input');
+    if (!input) return;
     const show = input.type === 'password';
     input.type = show ? 'text' : 'password';
     // The name stays "Show password"; aria-pressed alone says whether it is on.

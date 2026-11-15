@@ -3,7 +3,7 @@
 
     <section class="card" aria-labelledby="al-h">
         <div class="flex flex-wrap items-end justify-between gap-3">
-            <h2 id="al-h" class="card-title">How each distributor names the products</h2>
+            <h2 id="al-h" class="card-title card-title-icon"><span class="card-icon" style="--tone: var(--sky-c2)"><x-icon name="link" /></span>How each distributor names the products</h2>
             <form method="get" class="flex items-end gap-2">
                 <label for="al-d" class="sr-only">Distributor</label>
                 <select id="al-d" name="distributor" class="field w-auto" data-autosubmit>

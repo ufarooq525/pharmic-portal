@@ -22,7 +22,7 @@
 
     <section class="card flex flex-col gap-4" aria-labelledby="rep-h">
         <div class="flex flex-wrap items-end justify-between gap-3">
-            <h2 id="rep-h" class="card-title">{{ $titles[$type] }}</h2>
+            <h2 id="rep-h" class="card-title card-title-icon"><span class="card-icon" style="--tone: var(--sky-c2)"><x-icon name="chart" /></span>{{ $titles[$type] }}</h2>
             <form method="get" class="flex flex-wrap items-end gap-2">
                 <input type="hidden" name="period" value="{{ $period->format('Y-m') }}">
                 @foreach ([['distributor', 'Distributor', $distributors], ['product', 'Product', $products], ['rep', 'Medical rep', $reps]] as [$name, $label, $options])
