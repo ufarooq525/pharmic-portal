@@ -13,7 +13,7 @@
         <a href="{{ route('imports.file', $import) }}" class="btn btn-sm">Open the PDF</a>
         <a href="{{ route('imports.index', ['period' => $period->format('Y-m')]) }}" class="btn btn-sm">All files</a>
         @if ($canDiscard && $failed->isEmpty())
-            <form method="post" action="{{ route('imports.discard', $import) }}" data-confirm="Discard this file? Nothing has been posted from it yet.">
+            <form method="post" data-ajax action="{{ route('imports.discard', $import) }}" data-confirm="Discard this file? Nothing has been posted from it yet.">
                 @csrf
                 @method('delete')
                 <button class="btn btn-sm">Wrong file? Discard</button>
@@ -37,7 +37,7 @@
             @if ($canDiscard)
                 <div class="flex flex-wrap gap-2 self-center">
                     <a href="{{ $reupload }}" class="btn border-transparent bg-bad text-surface">Upload the right file</a>
-                    <form method="post" action="{{ route('imports.discard', $import) }}" data-confirm="Discard this file? Nothing has been posted from it.">
+                    <form method="post" data-ajax action="{{ route('imports.discard', $import) }}" data-confirm="Discard this file? Nothing has been posted from it.">
                         @csrf
                         @method('delete')
                         <button class="btn border-bad bg-transparent text-bad">Discard</button>
@@ -64,7 +64,7 @@
             <p>This distributor spells these products in a way the portal has not seen before. Link each one once; later files are recognised automatically.</p>
             @foreach ($unmapped as $name)
                 @if ($canMap)
-                    <form method="post" action="{{ route('imports.map', $import) }}" class="flex flex-wrap items-end gap-2">
+                    <form method="post" data-ajax action="{{ route('imports.map', $import) }}" class="flex flex-wrap items-end gap-2">
                         @csrf
                         <input type="hidden" name="product_name" value="{{ $name }}">
                         <span class="min-w-48 font-bold">“{{ $name }}”</span>
@@ -146,12 +146,12 @@
     <div class="action-bar">
         <span>{{ fmt_num($t['units']) }} units + {{ fmt_num($t['bonus']) }} bonus leave stock · {{ fmt_rs($t['value']) }} sales · ST {{ fmt_rs($t['sales_tax']) }} · WHT {{ fmt_rs($t['withholding_tax']) }}</span>
         @if ($canConfirm)
-            <form method="post" action="{{ route('imports.confirm', $import) }}">
+            <form method="post" data-ajax action="{{ route('imports.confirm', $import) }}">
                 @csrf
                 <button class="btn btn-go">Confirm and post</button>
             </form>
         @elseif ($canReverse)
-            <form method="post" action="{{ route('imports.reverse', $import) }}" class="flex flex-wrap items-center gap-2"
+            <form method="post" data-ajax action="{{ route('imports.reverse', $import) }}" class="flex flex-wrap items-center gap-2"
                   data-confirm="Revert this import? Its sales come out, its {{ fmt_num($t['units'] + $t['bonus']) }} units go back into stock, and any invoice already issued for {{ $period->format('F') }} is cancelled with a credit note.">
                 @csrf
                 <label for="revert-mode" class="sr-only">After reverting</label>

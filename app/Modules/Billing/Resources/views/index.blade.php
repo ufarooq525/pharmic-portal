@@ -58,7 +58,7 @@
 
                 <div class="flex flex-wrap gap-2">
                     @if (! $issued && $canIssue)
-                        <form method="post" action="{{ route('invoices.store') }}">
+                        <form method="post" data-ajax action="{{ route('invoices.store') }}">
                             @csrf
                             <input type="hidden" name="to" value="{{ $to }}">
                             <input type="hidden" name="period" value="{{ $period->format('Y-m') }}">
@@ -71,7 +71,7 @@
                         @if ($canCancel && $issued->status === \App\Modules\Billing\Enums\InvoiceStatus::Issued)
                             <details class="w-full">
                                 <summary class="btn btn-sm cursor-pointer">Cancel with a credit note</summary>
-                                <form method="post" action="{{ route('invoices.cancel', $issued) }}" class="mt-3 flex flex-wrap items-end gap-2" data-confirm="Cancel {{ $issued->number }}? A credit note will reverse it in full.">
+                                <form method="post" data-ajax action="{{ route('invoices.cancel', $issued) }}" class="mt-3 flex flex-wrap items-end gap-2" data-confirm="Cancel {{ $issued->number }}? A credit note will reverse it in full.">
                                     @csrf
                                     <div class="flex flex-col gap-1.5">
                                         <label for="cn-reason" class="label">Reason</label>

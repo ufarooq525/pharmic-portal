@@ -34,6 +34,8 @@
 </head>
 <body>
 <div id="page-loader" class="page-loader" role="progressbar" aria-label="Loading" aria-hidden="true"></div>
+{{-- Shown while page data loads in the background (navigation, search, refresh, saving) --}}
+<div id="fetch-pill" class="fetch-pill" role="status" hidden><span class="spinner" aria-hidden="true"></span> Loading…</div>
 <a href="#main" class="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-surface focus:px-4 focus:py-2">Skip to content</a>
 
 @php
@@ -72,11 +74,11 @@
             </button>
         </div>
 
-        <a href="#period" class="side-link sb-only" title="Month end: {{ $period->format('F Y') }}" data-expand-to-period>
+        <a href="#period" class="side-link sb-only" title="Month end: {{ $period->format('F Y') }}" data-expand-to-period data-swap="period-link">
             <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2.5"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
             <span class="sr-only">Month end {{ $period->format('F Y') }}</span>
         </a>
-        <form method="get" action="{{ url()->current() }}" class="sb-label mx-1 flex items-center gap-1.5 rounded-[14px] bg-soft py-1 pl-3 pr-1.5 text-[13px] font-bold text-softfg">
+        <form method="get" action="{{ url()->current() }}" data-swap="period-form" class="sb-label mx-1 flex items-center gap-1.5 rounded-[14px] bg-soft py-1 pl-3 pr-1.5 text-[13px] font-bold text-softfg">
             @foreach (request()->except(['period', 'page']) as $key => $value)
                 @if (is_string($value))
                     <input type="hidden" name="{{ $key }}" value="{{ $value }}">
@@ -134,7 +136,7 @@
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
             </button>
             <span class="font-extrabold">Pharmic LH</span>
-            <span class="ml-auto rounded-full bg-soft px-3 py-1 text-[12px] font-bold text-softfg">{{ $period->format('M Y') }}</span>
+            <span class="ml-auto rounded-full bg-soft px-3 py-1 text-[12px] font-bold text-softfg" data-swap="period-chip">{{ $period->format('M Y') }}</span>
         </header>
 
         <main id="main" class="mx-auto flex w-full max-w-[1320px] flex-col gap-5 px-4 pb-14 pt-6 sm:px-7 lg:pt-8">

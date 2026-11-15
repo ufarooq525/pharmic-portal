@@ -31,8 +31,9 @@
                 @endif
             </div>
         </div>
-        @if ($slot->isNotEmpty())
-            <div class="flex flex-wrap items-center gap-2">{{ $slot }}</div>
-        @endif
+        <div class="flex flex-wrap items-center gap-2">
+            {{ $slot }}
+            <x-refresh-button />
+        </div>
     </div>
 </header>

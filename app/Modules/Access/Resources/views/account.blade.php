@@ -3,7 +3,7 @@
 
     <section id="password-form" class="card max-w-[560px]" aria-labelledby="pw-h">
         <h2 id="pw-h" class="card-title">Change password</h2>
-        <form method="post" action="{{ route('account.password') }}" class="grid gap-4">
+        <form method="post" data-ajax action="{{ route('account.password') }}" class="grid gap-4">
             @csrf
             @method('put')
             <div class="flex flex-col gap-1.5">

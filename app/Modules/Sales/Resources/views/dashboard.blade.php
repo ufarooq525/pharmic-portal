@@ -58,6 +58,7 @@
                         <a href="{{ route('imports.index', $q) }}" class="btn btn-light"><x-icon name="upload" :size="16" /> Upload a file</a>
                     @endif
                     <a href="{{ route('reports.export', ['type' => 'sales'] + $q + $filtered) }}" class="btn btn-ghost-dark"><x-icon name="download" :size="16" /> Export CSV</a>
+                    <x-refresh-button class="btn-ghost-dark" />
                 </div>
             </div>
             <div class="ring max-sm:hidden" style="--p: {{ $donePct }}" role="img" aria-label="{{ $confirmed }} of {{ $files }} files confirmed">

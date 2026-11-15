@@ -165,17 +165,25 @@ window.addEventListener('pageshow', (event) => {
 
 /* Page loader: a bar across the top from the moment a link is clicked until the next page shows. */
 const loader = document.getElementById('page-loader');
+const fetchPill = document.getElementById('fetch-pill');
 let loaderTimer;
 function showLoader() {
     if (!loader) return;
     clearTimeout(loaderTimer);
     // Fast pages never flash the bar; it appears only if loading takes over 120 ms.
-    loaderTimer = setTimeout(() => { loader.dataset.active = ''; document.body.setAttribute('aria-busy', 'true'); }, 120);
+    loaderTimer = setTimeout(() => {
+        loader.dataset.active = '';
+        document.body.setAttribute('aria-busy', 'true');
+        if (fetchPill) fetchPill.hidden = false;
+        document.querySelectorAll('[data-refresh]').forEach((b) => b.setAttribute('aria-busy', 'true'));
+    }, 120);
 }
 function hideLoader() {
     clearTimeout(loaderTimer);
     if (loader) delete loader.dataset.active;
     document.body.removeAttribute('aria-busy');
+    if (fetchPill) fetchPill.hidden = true;
+    document.querySelectorAll('[data-refresh][aria-busy]').forEach((b) => b.removeAttribute('aria-busy'));
 }
 
 const isPageLink = (a, event) => a && a.href && !a.target && !a.hasAttribute('download')
@@ -294,7 +302,7 @@ function setupUpload(form) {
             q('[data-progress-label]').textContent = 'Opening the review…';
             showLoader();
             await wait(400);
-            window.location.assign(body.redirect);
+            softNavigate(new URL(body.redirect, location.href));
         });
         xhr.addEventListener('error', () => showErrors(['The upload stopped. Check the connection and try again.']));
 
@@ -494,7 +502,7 @@ async function fetchPage(url, options = {}) {
 
 // Swap in the main content (and sidebar badges) from a freshly loaded page, without a full reload.
 // Where the browser supports view transitions the old and new content cross-fade instead of jumping.
-function swapPage(doc, url, afterApply) {
+function swapPage(doc, url, afterApply, animate = true) {
     const main = doc.getElementById('main');
     if (!main) { location.assign(url); return; }
 
@@ -506,6 +514,8 @@ function swapPage(doc, url, afterApply) {
         document.getElementById('main').replaceWith(main);
         const nav = doc.querySelector('#sidebar nav');
         if (nav) document.querySelector('#sidebar nav')?.replaceWith(nav);
+        // The month picker and month labels outside the content (sidebar, phone header).
+        doc.querySelectorAll('[data-swap]').forEach((el) => document.querySelector(`[data-swap="${el.dataset.swap}"]`)?.replaceWith(el));
         document.title = doc.title;
         if (url && url !== location.href) history.replaceState(null, '', url);
         main.querySelectorAll('form[data-upload]').forEach(setupUpload);
@@ -524,7 +534,7 @@ function swapPage(doc, url, afterApply) {
     };
 
     // Not while the drawer slides out: a view transition would freeze it mid-slide.
-    if (document.startViewTransition && !reducedMotion() && drawer?.hidden !== false) {
+    if (animate && document.startViewTransition && !reducedMotion() && drawer?.hidden !== false) {
         const transition = document.startViewTransition(apply);
         // Leaving the page mid-fade aborts the transition; that is fine, so don't report it as an error.
         transition.ready.catch(() => {});
@@ -617,7 +627,8 @@ async function backgroundSubmit(form, inDrawer = false) {
 
         if (inDrawer) closeDrawer({ force: true });
         hideLoader();
-        swapPage(doc, response.url);
+        // A save that lands on another page (discard a file → the imports list) is a new history entry.
+        showSoftPage(doc, new URL(response.url), new URL(response.url).pathname !== location.pathname);
     } catch (e) {
         fail('Could not save. Check the connection and try again.');
     }
@@ -792,39 +803,49 @@ document.addEventListener('click', (event) => {
 
 
 /*
- * In-page navigation without a reload. A link or GET form inside the page content that stays on the
- * same page and only changes the query (distributor, year, page number, tab, filters) loads in the
- * background and swaps the content in place; Back and Forward work the same way. Going to another
- * page, or changing the month (the sidebar and header show it too), is a normal page load.
+ * Moving around without reloads. Links and GET forms in the app (sidebar, tabs, filters, search, page
+ * numbers, rows) load the next page in the background and swap the content in place, with the sidebar
+ * and the month shown in it. Back and Forward work the same way. Downloads, print pages, other sites and
+ * anything that isn't an app page (a sign-in page, an error) get a normal page load.
  */
-const currentPeriod = () => document.getElementById('period')?.value || '';
 function isSoftTarget(url, from) {
-    if (url.origin !== location.origin || url.pathname !== location.pathname) return false;
-    if (/\/(file|export|print|payslip|template)(\/|$)/.test(url.pathname)) return false;
-    if (!from?.closest('#main') || from.closest('[data-drawer-source], #drawer')) return false;
-    const period = url.searchParams.get('period');
-    return !(period && period !== currentPeriod());
+    if (!document.getElementById('main') || url.origin !== location.origin) return false;
+    if (/\/(file|export|print|payslip|template)(\/|$)|^\/(login|logout|api)(\/|$)/.test(url.pathname)) return false;
+    return Boolean(from) && !from.closest('[data-drawer-source], #drawer, [data-no-soft]');
 }
 
 let softRequest = 0;
 let shownPage = location.pathname + location.search;
-async function softNavigate(url, push = true) {
+
+// Show the new page: scroll to its #hash, keep the place on the same page, start at the top of a new one.
+function showSoftPage(doc, url, push, quiet = false) {
+    const samePage = url.pathname === location.pathname;
+    if (push && url.href !== location.href) history.pushState({ soft: true }, '', url.href);
+    shownPage = url.pathname + url.search;
+    setSidebar(false);
+    swapPage(doc, url.href, (main) => {
+        const target = url.hash && main.querySelector('#' + CSS.escape(url.hash.slice(1)));
+        if (target) {
+            target.setAttribute('tabindex', '-1');
+            target.focus({ preventScroll: true });
+            target.scrollIntoView({ block: 'start' });
+        } else if (!samePage) {
+            window.scrollTo(0, 0);
+        }
+        restoreSearch(main);
+    }, !quiet);
+}
+
+async function softNavigate(url, push = true, quiet = false) {
     const id = ++softRequest;
     showLoader();
     try {
         const { response, doc } = await fetchPage(url.href);
         if (id !== softRequest) return;
-        if (!response.ok || new URL(response.url).pathname !== url.pathname) { location.assign(url.href); return; }
-        if (push) history.pushState({ soft: true }, '', url.href);
-        shownPage = url.pathname + url.search;
-        swapPage(doc, url.href, (main) => {
-            const target = url.hash && main.querySelector(CSS.escape ? '#' + CSS.escape(url.hash.slice(1)) : url.hash);
-            if (target) {
-                target.setAttribute('tabindex', '-1');
-                target.focus({ preventScroll: true });
-                target.scrollIntoView({ block: 'start' });
-            }
-        });
+        if (!response.ok || !doc.getElementById('main')) { location.assign(response.ok ? response.url : url.href); return; }
+        const final = new URL(response.url);
+        final.hash = url.hash;
+        showSoftPage(doc, final, push, quiet);
     } catch (e) {
         location.assign(url.href);
     } finally {
@@ -835,10 +856,11 @@ async function softNavigate(url, push = true) {
 document.addEventListener('click', (event) => {
     if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
     const a = event.target.closest('a[href]');
-    if (!a || a.target || a.hasAttribute('download') || a.hasAttribute('data-drawer')) return;
-    const url = new URL(a.href);
+    if (!a || a.getAttribute('target') || a.hasAttribute('download') || a.hasAttribute('data-drawer')) return;
+    // getAttribute, not .href: links inside SVG charts have no string .href.
+    const url = new URL(a.getAttribute('href'), location.href);
     // Only the #hash differs: let the browser jump to it.
-    if (url.search === location.search && url.hash) return;
+    if (url.pathname === location.pathname && url.search === location.search && url.hash) return;
     if (!isSoftTarget(url, a)) return;
     event.preventDefault();
     softNavigate(url);
@@ -851,12 +873,54 @@ document.addEventListener('submit', (event) => {
     if (!isSoftTarget(url, form)) return;
     event.preventDefault();
     url.search = new URLSearchParams(new FormData(form, event.submitter)).toString();
-    if (!isSoftTarget(url, form)) { location.assign(url.href); return; }
-    softNavigate(url);
+    // Typing in a search box: swap without the fade, so the list keeps up with the typing.
+    const typing = document.activeElement?.matches?.('input[type="search"]') && form.contains(document.activeElement);
+    rememberSearch(typing ? document.activeElement : null);
+    softNavigate(url, true, typing);
 }, true);
 
 history.replaceState({ soft: true, ...(history.state || {}) }, '', location.href);
 window.addEventListener('popstate', (event) => {
     // A Back/Forward that only changes the #hash is the browser's own jump.
     if (event.state?.soft && location.pathname + location.search !== shownPage) softNavigate(new URL(location.href), false);
+});
+
+/* Live search: results update while you type (after a short pause), without a reload. The box keeps
+ * focus and the cursor; if you kept typing while results loaded, it searches again for the newer text. */
+let searchTimer;
+let searchState = null;
+function rememberSearch(input) {
+    searchState = input ? { id: input.id, name: input.name, sent: input.value } : null;
+}
+function restoreSearch(main) {
+    if (!searchState) return;
+    const state = searchState;
+    searchState = null;
+    const input = (state.id && main.querySelector('#' + CSS.escape(state.id))) || main.querySelector(`input[type="search"][name="${state.name}"]`);
+    if (!input) return;
+    const live = state.typed ?? state.sent;
+    input.value = live;
+    input.focus({ preventScroll: true });
+    input.setSelectionRange(live.length, live.length);
+    if (live !== state.sent) queueSearch(input);
+}
+function queueSearch(input) {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(() => {
+        if (input.isConnected && input.form) input.form.requestSubmit();
+    }, 350);
+}
+document.addEventListener('input', (event) => {
+    const input = event.target;
+    if (!input.matches?.('#main form input[type="search"]') || (input.form?.getAttribute('method') || 'get').toLowerCase() !== 'get') return;
+    // Text typed while the last search is still loading is carried over to the new page.
+    if (searchState && searchState.name === input.name) searchState.typed = input.value;
+    else queueSearch(input);
+});
+
+/* Refresh button in each page banner: loads the same page again in the background. */
+document.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-refresh]');
+    if (!button) return;
+    softNavigate(new URL(location.href), false);
 });
