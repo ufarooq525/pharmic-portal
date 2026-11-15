@@ -188,22 +188,9 @@ document.addEventListener('click', (event) => {
     if (!event.defaultPrevented && isPageLink(a, event)) showLoader();
 });
 
-/* Speed: start fetching a page when the pointer rests on its link, so the click opens it almost at once. */
-const prefetched = new Set();
-let hoverTimer;
-function prefetch(a) {
-    if (!isPageLink(a) || prefetched.has(a.href) || prefetched.size > 40 || navigator.connection?.saveData) return;
-    prefetched.add(a.href);
-    document.head.appendChild(Object.assign(document.createElement('link'), { rel: 'prefetch', href: a.href, as: 'document' }));
-}
-document.addEventListener('mouseover', (event) => {
-    const a = event.target.closest('a');
-    if (!a) return;
-    clearTimeout(hoverTimer);
-    hoverTimer = setTimeout(() => prefetch(a), 80);
-});
-document.addEventListener('mouseout', () => clearTimeout(hoverTimer));
-document.addEventListener('touchstart', (event) => prefetch(event.target.closest('a')), { passive: true });
+/* Speed: pages are fetched while the pointer rests on their link by the speculation rules in the layout's
+ * <head>. (A <link rel=prefetch> did the same, but pages opened from it lost the cross-page fade and
+ * logged "Transition was aborted" errors.) */
 
 /* AJAX upload: drag and drop, upload progress, then the four reading steps from the prototype. */
 const formatSize = (bytes) => (bytes > 1048576 ? (bytes / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(bytes / 1024)) + ' KB');
@@ -507,7 +494,7 @@ async function fetchPage(url, options = {}) {
 
 // Swap in the main content (and sidebar badges) from a freshly loaded page, without a full reload.
 // Where the browser supports view transitions the old and new content cross-fade instead of jumping.
-function swapPage(doc, url) {
+function swapPage(doc, url, afterApply) {
     const main = doc.getElementById('main');
     if (!main) { location.assign(url); return; }
 
@@ -522,6 +509,7 @@ function swapPage(doc, url) {
         document.title = doc.title;
         if (url && url !== location.href) history.replaceState(null, '', url);
         main.querySelectorAll('form[data-upload]').forEach(setupUpload);
+        afterApply?.(main);
         // The focused button or link may have been replaced; keep keyboard users on the page.
         if (!document.activeElement || document.activeElement === document.body || !document.activeElement.isConnected) {
             const heading = main.querySelector('h1');
@@ -540,6 +528,7 @@ function swapPage(doc, url) {
         const transition = document.startViewTransition(apply);
         // Leaving the page mid-fade aborts the transition; that is fine, so don't report it as an error.
         transition.ready.catch(() => {});
+        transition.updateCallbackDone.catch(() => {});
         transition.finished.then(done, done);
     }
     else { apply(); done(); }
@@ -801,3 +790,73 @@ document.addEventListener('click', (event) => {
     else target.click();
 });
 
+
+/*
+ * In-page navigation without a reload. A link or GET form inside the page content that stays on the
+ * same page and only changes the query (distributor, year, page number, tab, filters) loads in the
+ * background and swaps the content in place; Back and Forward work the same way. Going to another
+ * page, or changing the month (the sidebar and header show it too), is a normal page load.
+ */
+const currentPeriod = () => document.getElementById('period')?.value || '';
+function isSoftTarget(url, from) {
+    if (url.origin !== location.origin || url.pathname !== location.pathname) return false;
+    if (/\/(file|export|print|payslip|template)(\/|$)/.test(url.pathname)) return false;
+    if (!from?.closest('#main') || from.closest('[data-drawer-source], #drawer')) return false;
+    const period = url.searchParams.get('period');
+    return !(period && period !== currentPeriod());
+}
+
+let softRequest = 0;
+let shownPage = location.pathname + location.search;
+async function softNavigate(url, push = true) {
+    const id = ++softRequest;
+    showLoader();
+    try {
+        const { response, doc } = await fetchPage(url.href);
+        if (id !== softRequest) return;
+        if (!response.ok || new URL(response.url).pathname !== url.pathname) { location.assign(url.href); return; }
+        if (push) history.pushState({ soft: true }, '', url.href);
+        shownPage = url.pathname + url.search;
+        swapPage(doc, url.href, (main) => {
+            const target = url.hash && main.querySelector(CSS.escape ? '#' + CSS.escape(url.hash.slice(1)) : url.hash);
+            if (target) {
+                target.setAttribute('tabindex', '-1');
+                target.focus({ preventScroll: true });
+                target.scrollIntoView({ block: 'start' });
+            }
+        });
+    } catch (e) {
+        location.assign(url.href);
+    } finally {
+        if (id === softRequest) hideLoader();
+    }
+}
+
+document.addEventListener('click', (event) => {
+    if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    const a = event.target.closest('a[href]');
+    if (!a || a.target || a.hasAttribute('download') || a.hasAttribute('data-drawer')) return;
+    const url = new URL(a.href);
+    // Only the #hash differs: let the browser jump to it.
+    if (url.search === location.search && url.hash) return;
+    if (!isSoftTarget(url, a)) return;
+    event.preventDefault();
+    softNavigate(url);
+});
+
+document.addEventListener('submit', (event) => {
+    const form = event.target;
+    if (event.defaultPrevented || (form.getAttribute('method') || 'get').toLowerCase() !== 'get' || form.hasAttribute('data-upload')) return;
+    const url = new URL(form.action || location.href);
+    if (!isSoftTarget(url, form)) return;
+    event.preventDefault();
+    url.search = new URLSearchParams(new FormData(form, event.submitter)).toString();
+    if (!isSoftTarget(url, form)) { location.assign(url.href); return; }
+    softNavigate(url);
+}, true);
+
+history.replaceState({ soft: true, ...(history.state || {}) }, '', location.href);
+window.addEventListener('popstate', (event) => {
+    // A Back/Forward that only changes the #hash is the browser's own jump.
+    if (event.state?.soft && location.pathname + location.search !== shownPage) softNavigate(new URL(location.href), false);
+});

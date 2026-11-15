@@ -25,6 +25,11 @@
         })();
     </script>
     @include('partials.view-transition-guard')
+    {{-- Speed: browsers that support it fetch a page while the pointer rests on its link (Chrome, Edge).
+         Unlike <link rel=prefetch>, a page loaded this way still gets the cross-page fade. Downloads and logout are never fetched early. --}}
+    <script type="speculationrules">
+        {"prefetch": [{"where": {"and": [{"href_matches": "/*"}, {"not": {"or": [{"href_matches": "/*/file"}, {"href_matches": "/*/export"}, {"href_matches": "/*/print"}, {"href_matches": "/*/payslip"}, {"href_matches": "/*/template"}, {"href_matches": "/logout"}]}}, {"not": {"selector_matches": "[data-drawer], [download], [target]"}}]}, "eagerness": "moderate"}]}
+    </script>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body>

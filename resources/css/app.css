@@ -320,6 +320,12 @@
     .page-hero .btn-primary { @apply border-white bg-white text-[#141b2b] hover:bg-[#eaf0fc]; }
     @media (max-width: 639px) { .page-hero-icon { display: none; } }
 
+    /* Sign-in page: dark brand panel beside the form; a short header above it on phones */
+    .login-hero { @apply relative flex flex-col justify-between gap-8 overflow-hidden bg-bar px-6 py-6 text-white lg:px-14 lg:py-12; }
+    .login-hero-glow { position: absolute; inset: auto -160px -200px auto; width: 520px; height: 520px; border-radius: 50%;
+        background: radial-gradient(closest-side, rgb(157 184 255 / 0.2), transparent); pointer-events: none; }
+    .login-feature-icon { @apply flex size-10 flex-none items-center justify-center rounded-xl; background: rgb(255 255 255 / 0.1); color: #c9d6ff; }
+
     /* Card title with a tinted icon (pages other than the dashboard) */
     .card-title-icon { @apply flex items-center gap-2.5 text-[16px]; }
 
