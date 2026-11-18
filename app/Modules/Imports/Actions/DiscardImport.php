@@ -16,7 +16,7 @@ class DiscardImport extends Action
             throw new DomainException('A confirmed import has to be reverted by the owner first.');
         }
 
-        Storage::delete($import->file_path);
+        Storage::delete(array_filter([$import->file_path, $import->stock_report_path]));
         $import->loadMissing('distributor:id,name')->delete();
         $this->log('Discarded file', "{$import->distributor->name}, {$import->period->format('F Y')}: {$import->original_name}");
     }

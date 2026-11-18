@@ -65,6 +65,9 @@ class ReadImport extends Action
                 'bonus' => $line['bonus'],
                 'trade_price' => $line['trade_price'],
                 'value' => $line['value'],
+                // Kept so any figure can be traced back to the PDF later.
+                'source_page' => $line['page'] ?? null,
+                'source_text' => isset($line['source']) ? mb_substr($line['source'], 0, 500) : null,
             ], $parsed->lines));
 
             return $import;

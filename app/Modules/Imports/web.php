@@ -10,6 +10,7 @@ Route::middleware('auth')->prefix('imports')->name('imports.')->controller(Impor
         Route::get('{import}', 'show')->whereNumber('import')->name('show');
         Route::get('{import}/file', 'file')->name('file');
         Route::get('{import}/view', 'view')->name('view');
+        Route::get('{import}/stock-report', 'stockReportFile')->name('stock-report.file');
         Route::get('{import}/customers/{index}', 'customer')->whereNumber('index')->name('customer');
     });
 
@@ -17,6 +18,7 @@ Route::middleware('auth')->prefix('imports')->name('imports.')->controller(Impor
     Route::middleware('permission:imports.upload')->group(function () {
         Route::post('/', 'store')->name('store');
         Route::post('{import}/map', 'map')->name('map');
+        Route::post('{import}/stock-report', 'stockReport')->name('stock-report');
         Route::delete('{import}', 'discard')->name('discard');
     });
     Route::post('{import}/confirm', 'confirm')->middleware('permission:imports.confirm')->name('confirm');

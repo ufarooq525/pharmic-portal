@@ -34,7 +34,7 @@ final class MatrixParser implements LayoutParser
         $area = $previous = null;
         $units = $value = null;
 
-        foreach (PdfText::wordLines($path) as $page) {
+        foreach (PdfText::wordLines($path) as $pageIndex => $page) {
             $texts = array_map(fn ($ws) => trim(implode(' ', array_column($ws, 'text'))), $page);
             $headerAt = null;
 
@@ -103,6 +103,8 @@ final class MatrixParser implements LayoutParser
 
                     $key = self::key($name, $area);
                     $customers[$key] ??= ['code' => null, 'name' => $name, 'area' => $area];
+                    // The row's last figure is the customer's own total, kept to check the lines read against it.
+                    $customers[$key]['file_units'] = ($customers[$key]['file_units'] ?? 0) + PdfText::number(end($nums)['text']);
 
                     foreach (array_slice($nums, 0, -1) as $w) {
                         $qty = PdfText::number($w['text']);
@@ -110,7 +112,8 @@ final class MatrixParser implements LayoutParser
                         if ($qty != 0.0) {
                             $col = $this->nearest($columns, $w['x0']);
                             $lines[] = ['customer_code' => null, 'customer' => $name, 'area' => $area, 'product_code' => null, 'product' => $col['label'] ?: 'UNLABELLED@'.$col['x'],
-                                'units' => $qty, 'bonus' => null, 'trade_price' => null, 'value' => null, '_x' => $col['x'], '_key' => $key];
+                                'units' => $qty, 'bonus' => null, 'trade_price' => null, 'value' => null, '_x' => $col['x'], '_key' => $key,
+                                'page' => $pageIndex + 1, 'source' => $s];
                         }
                     }
 

@@ -18,6 +18,10 @@ class LinkProductName extends Action
     {
         $this->transaction(function () use ($import, $nameInFile, $product) {
             $codes = $import->rows()->where('product_name', $nameInFile)->whereNotNull('product_code')->distinct()->pluck('product_code');
+            // A name from the Sales & Stock report only: keep its item code, which the next report prints too.
+            if ($codes->isEmpty()) {
+                $codes = collect($import->stock_report['items'] ?? [])->where('name', $nameInFile)->pluck('code')->unique()->values();
+            }
 
             ProductAlias::updateOrCreate(
                 ['distributor_id' => $import->distributor_id, 'name_in_file' => $nameInFile],

@@ -21,8 +21,10 @@ final class LineItemParser implements LayoutParser
         $lines = $customers = [];
         $area = $customer = null;
         $units = $value = null;
+        $page = 1;
 
         foreach (explode("\n", $text) as $raw) {
+            $page += substr_count($raw, "\f");   // pdftotext starts each new page with a form feed
             $s = trim($raw);
 
             if (preg_match("/^Grand Total\s*:\s*($n)\s+($n)\s+($n)\s+($n)/", $s, $m)) {
@@ -30,6 +32,9 @@ final class LineItemParser implements LayoutParser
                 $value = PdfText::number($m[4]);
             } elseif (preg_match('/^Area\s*:\s*\d+\s*\/\s*(.+?)\s*(Total\s*:.*)?$/', $s, $m) && empty($m[2])) {
                 $area = trim($m[1]);
+            } elseif (preg_match("/^Customer\s*:\s*(\d+)\s*\/\s*.+?\s*Total\s*:\s*($n)\s+($n)\s+($n)\s+($n)/", $s, $m) && isset($customers[$m[1]])) {
+                // The customer's own total line, kept to check the lines read against it.
+                $customers[$m[1]] += ['file_units' => PdfText::number($m[2]), 'file_bonus' => PdfText::number($m[3]), 'file_value' => PdfText::number($m[5])];
             } elseif (preg_match('/^Customer\s*:\s*(\d+)\s*\/\s*(.+?)\s*(Total\s*:.*)?$/', $s, $m) && empty($m[3])) {
                 $customer = ['code' => $m[1], 'name' => trim($m[2]), 'area' => $area];
                 $customers[$m[1]] ??= $customer;
@@ -40,6 +45,7 @@ final class LineItemParser implements LayoutParser
                     'product_code' => $m[1], 'product' => trim($m[2]), 'units' => $qty, 'bonus' => PdfText::number($m[4]),
                     'trade_price' => $qty != 0.0 ? round(PdfText::number($m[5]) / $qty, 2) : null,
                     'value' => PdfText::number($m[6]),
+                    'page' => $page, 'source' => $s,
                 ];
             }
         }

@@ -68,11 +68,25 @@
                 <form id="upload" method="post" action="{{ route('imports.store') }}" enctype="multipart/form-data" class="flex flex-col gap-4" data-upload>
                     @csrf
                     <input type="hidden" name="distributor_id" value="{{ $current->id }}">
+                    {{-- The month the sales are for, chosen first: a file uploaded in November is often October's. --}}
+                    @php($uploadMonth = old('period', $period->format('Y-m')))
+                    @php($monthChoices = collect(range(0, 11))->map(fn ($i) => now()->startOfMonth()->subMonthsNoOverflow($i))->push(\Carbon\Carbon::createFromFormat('!Y-m', $uploadMonth))->unique(fn ($m) => $m->format('Y-m'))->sortByDesc(fn ($m) => $m->format('Y-m')))
+                    <div class="flex flex-wrap items-end gap-3 rounded-[18px] bg-surface px-4 py-3 shadow-[var(--sky-shadow)]">
+                        <div class="flex flex-col gap-1.5">
+                            <label for="month" class="label">Which month are the sales in this file for?</label>
+                            <select id="month" name="period" required class="field w-auto min-w-[220px]" data-upload-month-select>
+                                @foreach ($monthChoices as $m)
+                                    <option value="{{ $m->format('Y-m') }}" @selected($m->format('Y-m') === $uploadMonth)>{{ $m->format('F Y') }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <p class="m-0 max-w-[52ch] pb-2 text-[13px] text-muted">The month printed on the distributor’s report, not the month you are uploading in. If it doesn’t match the file, the check will say so.</p>
+                    </div>
                     <label for="file" data-dropzone class="relative flex min-h-[260px] cursor-pointer flex-col items-center justify-center gap-2.5 rounded-[20px] border-2 border-dashed border-line2 bg-surface p-6 text-center transition-colors data-[over]:border-accent data-[over]:bg-soft">
                         <span class="flex size-16 items-center justify-center rounded-[20px] bg-soft text-accent-text">
                             <svg aria-hidden="true" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4"/><path d="m7 9 5-5 5 5"/><path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/></svg>
                         </span>
-                        <span class="text-[20px] font-extrabold">Upload {{ possessive($current->name) }} {{ $period->format('F') }} PDF</span>
+                        <span class="text-[20px] font-extrabold">Upload {{ possessive($current->name) }} <span data-upload-month>{{ \Carbon\Carbon::createFromFormat('!Y-m', $uploadMonth)->format('F Y') }}</span> PDF</span>
                         <span class="text-muted">Drop the file here or click to choose · Expected layout: {{ $current->layout?->label() ?? 'not known yet, the portal will detect it' }}</span>
                         <span data-file-name class="hidden rounded-full bg-seg px-3 py-1 text-[13px] font-bold"></span>
                         <input id="file" name="file" type="file" accept="application/pdf,.pdf" required class="absolute size-px opacity-0">
@@ -97,10 +111,6 @@
                     <div data-upload-errors class="hidden rounded-[14px] bg-bad-soft px-3.5 py-3 font-semibold text-bad" role="alert"></div>
 
                     <div class="flex flex-wrap items-end gap-3" data-upload-controls>
-                        <div class="flex flex-col gap-1.5">
-                            <label for="month" class="label">Month the file covers</label>
-                            <input id="month" name="period" type="month" required value="{{ old('period', $period->format('Y-m')) }}" class="field w-auto">
-                        </div>
                         <button class="btn btn-primary" data-busy-label="Reading…">Read the file</button>
                         <span class="text-[13px] text-muted">Up to 10 MB. Nothing changes stock or reports until it is confirmed.</span>
                     </div>

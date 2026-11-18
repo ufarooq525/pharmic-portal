@@ -186,9 +186,11 @@ class PortalTest extends TestCase
         $this->assertEqualsWithDelta($scheme, (float) $sale->bonus_units, 0.01);
         $this->assertFalse((bool) $sale->bonus_from_file);
 
-        $this->assertSame(2.0, (new Distributor(['bonus_source' => BonusSource::File]))->bonusFor(2.0, 5));
-        $this->assertSame(5.0, (new Distributor(['bonus_source' => BonusSource::File]))->bonusFor(null, 5));
-        $this->assertSame(0.0, (new Distributor(['bonus_source' => BonusSource::None]))->bonusFor(null, 5));
+        $file = new Distributor(['bonus_source' => BonusSource::File]);
+        $this->assertSame(2.0, $file->bonusFor(2.0, 5));
+        $this->assertSame(0.0, $file->bonusFor(null, 5), 'No bonus printed means no bonus, not the scheme.');
+        $this->assertSame(['file', 'none'], [$file->bonusRule(2.0), $file->bonusRule(null)]);
+        $this->assertSame('scheme', $irfan->fresh()->bonusRule(2.0));
     }
 
     public function test_the_header_check_uses_the_saved_name_and_the_first_file_saves_the_format(): void
@@ -220,12 +222,12 @@ class PortalTest extends TestCase
     public function test_only_the_owner_edits_a_distributor_profile(): void
     {
         $irfan = Distributor::where('name', 'Irfan Enterprises')->firstOrFail();
-        $profile = ['name' => 'Irfan Enterprises', 'city' => 'Timergara', 'header_name' => 'IRFAN ENTERPRISES', 'layout' => 'lineitem', 'bonus_source' => 'none'];
+        $profile = ['name' => 'Irfan Enterprises', 'city' => 'Timergara', 'header_name' => 'IRFAN ENTERPRISES', 'layout' => 'lineitem', 'bonus_source' => 'scheme'];
 
         $this->actingAs(User::factory()->role('accounts')->create())->put("/distributors/{$irfan->id}", $profile)->assertForbidden();
         $this->actingAs($this->owner())->put("/distributors/{$irfan->id}", $profile)->assertSessionHasNoErrors();
 
-        $this->assertSame(\App\Modules\Distribution\Enums\BonusSource::None, $irfan->fresh()->bonus_source);
+        $this->assertSame(\App\Modules\Distribution\Enums\BonusSource::Scheme, $irfan->fresh()->bonus_source);
     }
 
     public function test_the_ledger_debits_confirmed_sales_and_credits_payments(): void
@@ -425,5 +427,58 @@ class PortalTest extends TestCase
         $limited = User::factory()->role('accounts')->create(['distributor_ids' => [$other]]);
         $this->actingAs($limited)->get("/imports/{$import->id}/customers/0")->assertForbidden();
         $this->actingAs($limited)->get("/imports/{$import->id}/view")->assertForbidden();
+    }
+
+    public function test_every_posted_figure_can_be_traced_back_to_the_file(): void
+    {
+        $import = $this->import();
+        $row = ['customer_code' => '101', 'customer_name' => 'ZAMAN MEDICAL STORE', 'area' => 'TIMERGARA', 'trade_price' => 417, 'product_name' => 'GYNOFOL TAB',
+            'product_id' => Product::where('code', 'GYN')->value('id')];
+        // A file line with no bonus printed, read from page 2.
+        $noBonus = $import->rows()->create($row + ['units' => 5, 'bonus' => null, 'value' => 2085, 'source_page' => 2, 'source_text' => 'Item : 1 / GYNOFOL TAB 5 2085']);
+
+        app(ConfirmImport::class)->handle($import, $this->owner());
+
+        // Printed bonus is used as is, and the sale line says so.
+        $sale = SaleLine::where('units', 10)->firstOrFail();
+        $this->assertSame(['file', 2.0], [$sale->bonus_rule, (float) $sale->bonus_in_file]);
+        $this->assertSame(2.0, (float) $sale->bonus_units);
+        $this->assertNotNull($sale->import_row_id);
+
+        // Nothing printed: no bonus (the scheme would have given some), and the reason is kept.
+        $plain = SaleLine::where('import_row_id', $noBonus->id)->firstOrFail();
+        $this->assertSame(['none', 0.0], [$plain->bonus_rule, (float) $plain->bonus_units]);
+        $this->assertNull($plain->bonus_in_file);
+
+        // The return (-2) comes back into stock, linked to the line it was read from.
+        $return = \App\Modules\Sales\Models\StockMovement::where('type', 'return')->firstOrFail();
+        $this->assertSame(2.0, (float) $return->units);
+        $this->assertNotNull($return->import_row_id);
+        $this->assertSame('ZAMAN MEDICAL STORE', $return->note);
+
+        // One line in the activity log says what was posted.
+        $log = \App\Modules\Access\Models\ActivityLog::where('action', 'Confirmed import')->latest('id')->value('detail');
+        $this->assertStringContainsString('3 lines', $log);
+        $this->assertStringContainsString('1 lines with no bonus printed', $log);
+        $this->assertStringContainsString('1 return (2 units back to stock)', $log);
+
+        // The review drawer shows where each line came from and how its bonus was decided.
+        $this->actingAs($this->owner())->get("/imports/{$import->id}/customers/0")->assertOk()
+            ->assertSee('Page 2: Item : 1 / GYNOFOL TAB 5 2085')->assertSee('No bonus printed in the file, so no bonus')
+            ->assertSee('Bonus as printed in the file: 2')->assertSee('Return: 2 units come back into stock');
+    }
+
+    public function test_each_customer_is_checked_against_its_total_printed_in_the_file(): void
+    {
+        $import = $this->import();   // ZAMAN MEDICAL STORE: 10 and -2 units read, value 4170 - 834
+        $this->actingAs($this->owner());
+
+        $import->update(['customers' => [['code' => '101', 'name' => 'ZAMAN MEDICAL STORE', 'area' => 'TIMERGARA', 'file_units' => 8, 'file_bonus' => 2, 'file_value' => 3336]]]);
+        $this->get("/imports/{$import->id}/customers/0")->assertOk()->assertSee('Customer total')->assertSee('Printed in the PDF')->assertSee('✓ matches the lines read');
+        $this->get("/imports/{$import->id}")->assertOk()->assertSee('File total · 1 customer')->assertDontSee('Total differs');
+
+        $import->update(['customers' => [['code' => '101', 'name' => 'ZAMAN MEDICAL STORE', 'area' => 'TIMERGARA', 'file_units' => 9, 'file_bonus' => 2, 'file_value' => 3336]]]);
+        $this->get("/imports/{$import->id}/customers/0")->assertOk()->assertSee('✕ does not match the lines read');
+        $this->get("/imports/{$import->id}?show=attention")->assertOk()->assertSee('Total differs')->assertSee('ZAMAN MEDICAL STORE');
     }
 }

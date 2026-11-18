@@ -22,9 +22,9 @@ final class PdfImportReader
         foreach ($this->parsers as $parser) {
             if ($parser->matches($text)) {
                 $result = $parser->parse($path, $text);
-                [$from, $to] = $this->period($text);
+                [$from, $to] = self::period($text);
 
-                return new ParsedFile($parser->layout(), $this->distributorName($text), $from, $to,
+                return new ParsedFile($parser->layout(), self::distributorName($text), $from, $to,
                     $result['lines'], $result['customers'], $result['units'], $result['value'], $result['columns'] ?? []);
             }
         }
@@ -40,7 +40,8 @@ final class PdfImportReader
         return trim(preg_replace('/[^A-Z0-9]+/', ' ', $name));
     }
 
-    private function distributorName(string $text): string
+    /** The first line of the report: the distributor's own name. */
+    public static function distributorName(string $text): string
     {
         foreach (explode("\n", $text) as $line) {
             $line = trim($line);
@@ -54,16 +55,16 @@ final class PdfImportReader
     }
 
     /** @return array{?string, ?string} ISO dates */
-    private function period(string $text): array
+    public static function period(string $text): array
     {
         $date = '(\d{2}[\/-](?:\d{2}|[A-Z]{3})[\/-]\d{2,4})';
         preg_match('/From Date\s*:?\s*'.$date.'/', $text, $from);
         preg_match('/To Date\s*:?\s*'.$date.'/', $text, $to);
 
-        return [isset($from[1]) ? $this->iso($from[1]) : null, isset($to[1]) ? $this->iso($to[1]) : null];
+        return [isset($from[1]) ? self::iso($from[1]) : null, isset($to[1]) ? self::iso($to[1]) : null];
     }
 
-    private function iso(string $date): string
+    private static function iso(string $date): string
     {
         $months = ['JAN' => 1, 'FEB' => 2, 'MAR' => 3, 'APR' => 4, 'MAY' => 5, 'JUN' => 6, 'JUL' => 7, 'AUG' => 8, 'SEP' => 9, 'OCT' => 10, 'NOV' => 11, 'DEC' => 12];
         [$d, $m, $y] = preg_split('/[\/-]/', $date);

@@ -4,6 +4,7 @@ namespace App\Modules\Imports\Actions;
 
 use App\Modules\Billing\Enums\InvoiceKind;
 use App\Modules\Billing\Enums\InvoiceStatus;
+use App\Modules\Imports\Bonus\ImportBonus;
 use App\Modules\Imports\Enums\ImportStatus;
 use App\Modules\Sales\Enums\StockMovementType;
 use App\Models\User;
@@ -45,24 +46,43 @@ class ConfirmImport extends Action
             $distributor = $import->distributor;
             $customers = $this->registerCustomers($import, $period);
             $products = Product::with('rates')->findMany($import->rows()->distinct()->pluck('product_id'))->keyBy('id');
+            $summary = ['lines' => 0, 'units' => 0, 'bonus' => 0, 'bonus_file' => 0, 'bonus_scheme' => 0, 'bonus_allocated' => 0, 'no_bonus_printed' => 0, 'returns' => 0, 'returned_units' => 0];
 
             foreach ($import->rows as $row) {
-                $rate = $products[$row->product_id]->rateOn($period->endOfMonth())
+                $products[$row->product_id]->rateOn($period->endOfMonth())
                     ?? throw new DomainException("No price is set for {$products[$row->product_id]->name} in {$period->format('F Y')}. Add a rate starting on or before 1 {$period->format('M Y')} under Inventory → Products & prices, then confirm again.");
+            }
 
-                $bonus = $distributor->bonusFor($row->bonus, $rate->schemeBonus($row->units));
+            // The same decision the review page showed: printed, scheme, or shared out from the Sales & Stock report.
+            $bonuses = new ImportBonus($import, $import->rows, $products, $period->endOfMonth());
+            if ($unmatched = $bonuses->unmatchedReportNames()) {
+                throw new DomainException('Link the Sales & Stock report’s '.implode(', ', array_map(fn ($n) => "“{$n}”", $unmatched)).' to a product before confirming.');
+            }
+
+            foreach ($import->rows as $row) {
+                $rate = $products[$row->product_id]->rateOn($period->endOfMonth());
+                $decided = $bonuses->forRow($row);
+                $scheme = $decided['scheme'];
+                $bonus = $decided['bonus'];
+                $rule = $decided['rule'];
                 $valueTp = $row->value ?? round($row->units * $rate->trade_price, 2);
                 $valueExfp = round($row->units * $rate->exfp_price, 2);
 
                 SaleLine::create([
                     'import_id' => $import->id,
+                    'import_row_id' => $row->id,
                     'distributor_id' => $import->distributor_id,
                     'customer_id' => $customers[$this->matchKey($row->customer_code, $row->customer_name, $row->area)],
                     'product_id' => $row->product_id,
                     'period' => $period,
                     'units' => $row->units,
                     'bonus_units' => $bonus,
-                    'bonus_from_file' => $distributor->bonusIsFromFile($row->bonus),
+                    'bonus_from_file' => $rule === 'file',
+                    // How the bonus was decided, kept for later checks: what the file printed, what the scheme gives, which rule won.
+                    'bonus_in_file' => $row->bonus,
+                    'scheme_bonus' => $scheme,
+                    'bonus_rule' => $rule,
+                    'bonus_target' => $decided['target'],
                     'trade_price' => $row->trade_price ?? $rate->trade_price,
                     'exfp_price' => $rate->exfp_price,
                     'cost_price' => $rate->cost_price,
@@ -80,10 +100,22 @@ class ConfirmImport extends Action
                 StockMovement::create([
                     'product_id' => $row->product_id,
                     'import_id' => $import->id,
+                    'import_row_id' => $row->id,
                     'type' => $row->units < 0 ? StockMovementType::Return : StockMovementType::Sale,
                     'units' => -($row->units + $bonus),
                     'moved_on' => $period->endOfMonth(),
+                    'note' => $row->customer_name,
                 ]);
+
+                $summary['lines']++;
+                $summary['units'] += $row->units;
+                $summary['bonus'] += $bonus;
+                $summary[match ($rule) { 'scheme' => 'bonus_scheme', 'allocated' => 'bonus_allocated', default => 'bonus_file' }] += $bonus;
+                $summary['no_bonus_printed'] += $rule === 'none' ? 1 : 0;
+                if ($row->units < 0) {
+                    $summary['returns']++;
+                    $summary['returned_units'] += -$row->units;
+                }
             }
 
             // The first confirmed file fixes the distributor's format; later files are checked against it.
@@ -93,10 +125,17 @@ class ConfirmImport extends Action
 
             $import->update(['status' => ImportStatus::Confirmed, 'confirmed_by' => $user->id, 'confirmed_at' => now()]);
 
-            return $import;
+            return [$import, $summary];
         });
+        [$confirmed, $s] = $confirmed;
 
-        $this->log('Confirmed import', "{$import->distributor->name}, {$import->period->format('F Y')}");
+        // What was posted, in one line of the activity log, so a month can be checked later.
+        $this->log('Confirmed import', "{$import->distributor->name}, {$import->period->format('F Y')}: {$s['lines']} lines, ".fmt_num($s['units']).' units, '
+            .fmt_num($s['bonus']).' bonus ('.fmt_num($s['bonus_file']).' printed in the file, '.fmt_num($s['bonus_scheme']).' by scheme'
+            .($s['bonus_allocated'] ? ', '.fmt_num($s['bonus_allocated']).' shared out from the Sales & Stock report' : '')
+            .($s['no_bonus_printed'] ? ", {$s['no_bonus_printed']} lines with no bonus printed" : '').'), '
+            .($s['returns'] ? "{$s['returns']} ".str('return')->plural($s['returns']).' ('.fmt_num($s['returned_units']).' units back to stock)' : 'no returns')
+            .'; bonus rule: '.$import->distributor->bonus_source->label().'.');
 
         return $confirmed;
 

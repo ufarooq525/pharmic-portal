@@ -49,8 +49,17 @@ class Distributor extends Model
     {
         return match ($this->bonus_source) {
             BonusSource::Scheme => $scheme,
-            BonusSource::None => $inFile ?? 0.0,
-            default => $inFile ?? $scheme,
+            default => $inFile ?? 0.0,   // nothing printed means no bonus
+        };
+    }
+
+    /** Which rule decided a line's bonus, kept on the sale line: file (printed), scheme, or none (nothing printed). */
+    public function bonusRule(?float $inFile): string
+    {
+        return match (true) {
+            $this->bonus_source === BonusSource::Scheme => 'scheme',
+            $inFile === null => 'none',
+            default => 'file',
         };
     }
 

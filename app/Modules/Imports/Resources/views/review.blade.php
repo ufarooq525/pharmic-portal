@@ -58,6 +58,85 @@
         @endforeach
     </ul>
 
+    @if ($allocated)
+        {{-- The customer file prints no bonus: the distributor's Sales & Stock report gives it per product, shared out across customers. --}}
+        <section id="stock-report" class="card scroll-mt-4" aria-labelledby="ssr-h">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+                <h2 id="ssr-h" class="card-title card-title-icon"><span class="card-icon" style="--tone: var(--sky-c3)"><x-icon name="box" /></span>Sales &amp; Stock report · bonus</h2>
+                @if ($import->hasStockReport())
+                    <span class="flex flex-wrap items-center gap-2 text-[13px] text-muted">
+                        {{ $import->stock_report_name }}
+                        <a href="{{ route('imports.stock-report.file', $import) }}" class="btn btn-sm">Open the PDF</a>
+                    </span>
+                @endif
+            </div>
+            <p class="m-0 text-[13px] text-muted">This distributor’s customer file prints no bonus. Each product’s net bonus on its Sales &amp; Stock report is shared out across the customers who bought it, in proportion to the scheme. Product totals match the report; each customer’s share is an estimate.</p>
+
+            @if ($reportWarnings)
+                <ul class="m-0 grid list-none gap-2 p-0 sm:grid-cols-2" aria-label="Sales & Stock report checks">
+                    @foreach ($reportWarnings as $check)
+                        <li class="flex items-start gap-2.5 rounded-[14px] px-3.5 py-[11px] font-semibold {{ $check['ok'] ? 'bg-ok-soft text-ok' : 'bg-warn-soft text-warn' }}">
+                            <span aria-hidden="true" class="font-extrabold">{{ $check['ok'] ? '✓' : '!' }}</span>
+                            <span><span class="sr-only">{{ $check['ok'] ? 'Passed:' : 'Warning:' }}</span> {{ $check['message'] }}</span>
+                        </li>
+                    @endforeach
+                </ul>
+            @endif
+
+            @if ($reportProducts)
+                <div class="table-wrap">
+                    <table class="data">
+                        <thead>
+                        <tr>
+                            <th scope="col">Product on the report</th><th scope="col" class="r">Units in customer file</th><th scope="col" class="r">Units on report</th>
+                            <th scope="col" class="r">Bonus on report</th><th scope="col" class="r">Bonus shared out</th><th scope="col"><span class="sr-only">Check</span></th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        @foreach ($reportProducts as $p)
+                            <tr>
+                                <td class="font-semibold">{{ $p['name'] }}</td>
+                                <td class="r">{{ fmt_num($p['file_units']) }}</td>
+                                <td class="r">{{ fmt_num($p['report_units']) }}</td>
+                                <td class="r">{{ fmt_num($p['report_bonus']) }}</td>
+                                <td class="r">{{ fmt_num($p['given']) }}</td>
+                                <td>
+                                    @if ($p['units_ok'] && $p['given_ok'])
+                                        <x-chip tone="ok">Matches</x-chip>
+                                    @else
+                                        <x-chip tone="warn">{{ ! $p['units_ok'] ? 'Units differ' : 'Bonus not all given' }}</x-chip>
+                                    @endif
+                                </td>
+                            </tr>
+                        @endforeach
+                        </tbody>
+                        <tfoot>
+                        <tr>
+                            <td>Total</td>
+                            <td class="r">{{ fmt_num(array_sum(array_column($reportProducts, 'file_units'))) }}</td>
+                            <td class="r">{{ fmt_num(array_sum(array_column($reportProducts, 'report_units'))) }}</td>
+                            <td class="r">{{ fmt_num(array_sum(array_column($reportProducts, 'report_bonus'))) }}</td>
+                            <td class="r">{{ fmt_num(array_sum(array_column($reportProducts, 'given'))) }}</td>
+                            <td></td>
+                        </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            @endif
+
+            @if ($canMap)
+                <form method="post" data-ajax action="{{ route('imports.stock-report', $import) }}" enctype="multipart/form-data" class="flex flex-wrap items-end gap-3">
+                    @csrf
+                    <div class="flex flex-col gap-1.5">
+                        <label for="stock-report-file" class="label">{{ $import->hasStockReport() ? 'Replace the Sales & Stock report' : 'Upload the Sales & Stock report for '.$period->format('F Y') }}</label>
+                        <input id="stock-report-file" name="stock_report" type="file" accept="application/pdf,.pdf" required class="field w-auto bg-surface">
+                    </div>
+                    <button class="btn {{ $import->hasStockReport() ? '' : 'btn-primary' }}" data-busy-label="Reading…">Read the report</button>
+                </form>
+            @endif
+        </section>
+    @endif
+
     @if ($unmapped)
         <section class="flex flex-col gap-3 rounded-2xl bg-warn-soft p-4 text-warn" aria-labelledby="map-h">
             <h2 id="map-h" class="m-0 text-[17px] font-extrabold">Link {{ count($unmapped) }} product {{ str('name')->plural(count($unmapped)) }}</h2>
@@ -116,7 +195,7 @@
                         <td class="min-w-[200px]"><span class="block font-bold">{{ $c['name'] }}</span><span class="text-[12px] text-muted">{{ $c['code'] ? 'Code '.$c['code'].' · ' : '' }}{{ $c['area'] ?: 'No area' }}</span></td>
                         <td class="text-[13px] {{ $c['reps'] ? '' : 'text-warn' }}">{{ $c['reps'] ?: 'Not assigned' }}</td>
                         <td class="r">{{ fmt_num($c['units']) }}</td>
-                        <td class="r">{{ fmt_num($c['bonus']) }}</td>
+                        <td class="r">{{ fmt_num($c['bonus']) }}@if ($c['bonus_estimated'])<span class="ml-1 text-[11px] font-bold text-muted" title="Share of the bonus on the Sales & Stock report: an estimate">est.</span>@endif</td>
                         <td class="r">{{ fmt_num($c['value']) }}</td>
                         <td class="r">{{ fmt_num($c['sales_tax']) }}</td>
                         <td class="r">{{ fmt_num($c['withholding_tax']) }}</td>
@@ -130,6 +209,13 @@
                     <tr><td colspan="9"><x-empty>Every customer in this file is ready.</x-empty></td></tr>
                 @endforelse
                 </tbody>
+                <tfoot>
+                <tr>
+                    <td>File total · {{ count($customers) }} {{ str('customer')->plural(count($customers)) }}</td><td></td>
+                    <td class="r">{{ fmt_num($totals['units']) }}</td><td class="r">{{ fmt_num($totals['bonus']) }}</td><td class="r">{{ fmt_num($totals['value']) }}</td>
+                    <td class="r">{{ fmt_num($totals['sales_tax']) }}</td><td class="r">{{ fmt_num($totals['withholding_tax']) }}</td><td></td><td class="sticky-end"></td>
+                </tr>
+                </tfoot>
             </table>
         </div>
         {{ $shown->links() }}

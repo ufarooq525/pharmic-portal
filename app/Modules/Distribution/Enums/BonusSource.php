@@ -11,14 +11,16 @@ enum BonusSource: string
 
     case File = 'file';
     case Scheme = 'scheme';
-    case None = 'none';
+    // For files with no bonus column (the product grid): each product's bonus on the distributor's
+    // Sales & Stock report is shared out across the customers who bought it.
+    case Allocated = 'allocated';
 
     public function label(): string
     {
         return match ($this) {
-            self::File => 'Use the bonus printed in the file; the product scheme where none is printed',
+            self::File => 'Only the bonus printed in the file; no bonus when the file prints none',
             self::Scheme => 'Always use the product scheme, ignore the file',
-            self::None => 'Only the bonus printed in the file; no scheme bonus',
+            self::Allocated => 'Spread the bonus from the Sales & Stock report across customers',
         };
     }
 }

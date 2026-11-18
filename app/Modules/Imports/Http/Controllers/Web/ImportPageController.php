@@ -4,12 +4,14 @@ namespace App\Modules\Imports\Http\Controllers\Web;
 
 use App\Modules\Catalog\Repositories\ProductRepository;
 use App\Modules\Distribution\Repositories\DistributorRepository;
+use App\Modules\Imports\Actions\AttachStockReport;
 use App\Modules\Imports\Actions\ConfirmImport;
 use App\Modules\Imports\Actions\DiscardImport;
 use App\Modules\Imports\Actions\LinkProductName;
 use App\Modules\Imports\Actions\ReadImport;
 use App\Modules\Imports\Actions\RevertImport;
 use App\Modules\Imports\Enums\ImportStatus;
+use App\Modules\Imports\Http\Requests\AttachStockReportRequest;
 use App\Modules\Imports\Http\Requests\LinkProductNameRequest;
 use App\Modules\Imports\Http\Requests\RevertImportRequest;
 use App\Modules\Imports\Http\Requests\StoreImportRequest;
@@ -111,6 +113,28 @@ class ImportPageController
         return back()->with('status', "“{$request->validated('product_name')}” is now linked. It will be recognised in every later file from this distributor.");
     }
 
+    /** The distributor's Sales & Stock report for the same month: the bonus per product, shared out across customers. */
+    public function stockReport(AttachStockReportRequest $request, Import $import, AttachStockReport $attach): RedirectResponse
+    {
+        $this->guard($request, $import);
+
+        try {
+            $attach->handle($import, $request->file('stock_report'));
+        } catch (RuntimeException|DomainException $e) {
+            return back()->withErrors(['stock_report' => $e->getMessage()]);
+        }
+
+        return back()->with('status', 'Sales & Stock report read. Each product’s bonus is now shared out across its customers; check the products table.');
+    }
+
+    public function stockReportFile(Request $request, Import $import): StreamedResponse
+    {
+        $this->guard($request, $import);
+        abort_unless($import->stock_report_path && Storage::exists($import->stock_report_path), 404);
+
+        return Storage::download($import->stock_report_path, $import->stock_report_name);
+    }
+
     public function confirm(Request $request, Import $import, ConfirmImport $confirm): RedirectResponse
     {
         $this->guard($request, $import);
@@ -187,7 +211,8 @@ class ImportPageController
         return view('imports::customer', [
             'import' => $import,
             'customer' => $customer,
-            'page' => $this->pageOf($import, $customer),
+            // The page its lines were read from; files read before pages were recorded fall back to a text search.
+            'page' => collect($customer['lines'])->pluck('source_page')->filter()->min() ?? $this->pageOf($import, $customer),
             'hasFile' => Storage::exists($import->file_path),
         ]);
     }

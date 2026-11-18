@@ -196,7 +196,11 @@ const isPageLink = (a, event) => a && a.href && !a.target && !a.hasAttribute('do
 
 document.addEventListener('click', (event) => {
     const a = event.target.closest('a');
-    if (!event.defaultPrevented && isPageLink(a, event)) showLoader();
+    if (!isPageLink(a, event)) return;
+    // Decide after every click handler has run: a drawer link or an in-page load takes the click over
+    // (and shows its own progress), so only a real page load shows the bar here. Deciding earlier left
+    // "Loading…" up for good after opening a drawer.
+    setTimeout(() => { if (!event.defaultPrevented) showLoader(); }, 0);
 });
 
 /* Speed: pages are fetched while the pointer rests on their link by the speculation rules in the layout's
@@ -951,4 +955,12 @@ document.addEventListener('click', (event) => {
     const button = event.target.closest('[data-refresh]');
     if (!button) return;
     softNavigate(new URL(currentFetch), false);
+});
+
+/* Upload form: the drop area's title follows the month picked ("Upload Irfan Enterprises' October 2026 PDF"). */
+document.addEventListener('change', (event) => {
+    const select = event.target.closest?.('[data-upload-month-select]');
+    if (!select) return;
+    const label = select.form?.querySelector('[data-upload-month]');
+    if (label) label.textContent = select.selectedOptions[0]?.textContent.trim() || '';
 });

@@ -220,7 +220,9 @@ class AccessTest extends TestCase
         $accounts = User::factory()->role('accounts')->create();
         $rep = User::factory()->role('medical_rep')->create(['medical_rep_id' => MedicalRep::first()->id]);
 
-        Artisan::call('migrate:rollback', ['--step' => 1]);
+        // Undo the roles migration and any added after it (newest first), then run them all again.
+        $rolesMigration = DB::table('migrations')->where('migration', 'like', '%create_roles_and_permissions')->value('id');
+        Artisan::call('migrate:rollback', ['--step' => DB::table('migrations')->where('id', '>=', $rolesMigration)->count()]);
         $this->assertSame('accounts', DB::table('users')->where('id', $accounts->id)->value('role'));
         $this->assertSame('medical_rep', DB::table('users')->where('id', $rep->id)->value('role'));
         $this->assertSame('owner', DB::table('users')->where('email', 'owner@example.com')->value('role'));

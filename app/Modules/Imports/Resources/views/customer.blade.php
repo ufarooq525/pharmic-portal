@@ -45,16 +45,42 @@
                 <tbody>
                 @foreach ($c['lines'] as $l)
                     <tr @if (! $l['product']) class="bg-bad-soft" @endif>
-                        <td><span class="font-mono text-[12.5px]">{{ $l['code_in_file'] ? $l['code_in_file'].' · ' : '' }}{{ $l['name_in_file'] }}</span>@if ($l['note'])<span class="block text-[12px] {{ $l['product'] ? 'text-muted' : 'font-semibold text-bad' }}">{{ $l['note'] }}</span>@endif</td>
+                        <td>
+                            <span class="font-mono text-[12.5px]">{{ $l['code_in_file'] ? $l['code_in_file'].' · ' : '' }}{{ $l['name_in_file'] }}</span>
+                            @if ($l['note'])<span class="block text-[12px] {{ $l['product'] ? 'text-muted' : 'font-semibold text-bad' }}">{{ $l['note'] }}</span>@endif
+                            <span class="block text-[12px] text-muted">{{ $l['bonus_why'] }}</span>
+                            @if ($l['source_text'])
+                                <span class="mt-1 block rounded-md bg-sunk px-2 py-1 font-mono text-[11.5px] text-muted" title="The line as printed in the PDF">Page {{ $l['source_page'] }}: {{ $l['source_text'] }}</span>
+                            @endif
+                        </td>
                         <td class="font-semibold">{{ $l['product'] ?? 'Not linked' }}</td>
                         <td class="r">{{ fmt_num($l['units']) }}</td>
-                        <td class="r">{{ fmt_num($l['bonus']) }}</td>
+                        <td class="r">{{ fmt_num($l['bonus']) }}@if ($l['bonus_estimated'] ?? false)<span class="ml-1 text-[11px] font-bold text-muted" title="Share of the bonus on the Sales & Stock report: an estimate">est.</span>@endif</td>
                         <td class="r">{{ fmt_num($l['value']) }}</td>
                         <td class="r">{{ $l['sales_tax_rate'] !== null ? fmt_pct($l['sales_tax_rate']).' · '.fmt_num($l['sales_tax']) : '–' }}</td>
                         <td class="r">{{ $l['withholding_tax_rate'] !== null ? fmt_pct($l['withholding_tax_rate']).' · '.fmt_num($l['withholding_tax']) : '–' }}</td>
                     </tr>
                 @endforeach
                 </tbody>
+                <tfoot>
+                <tr>
+                    <td>Customer total</td><td></td>
+                    <td class="r">{{ fmt_num($c['units']) }}</td><td class="r">{{ fmt_num($c['bonus']) }}</td><td class="r">{{ fmt_num($c['value']) }}</td>
+                    <td class="r">{{ fmt_num($c['sales_tax']) }}</td><td class="r">{{ fmt_num($c['withholding_tax']) }}</td>
+                </tr>
+                @if ($c['file_units'] !== null)
+                    <tr>
+                        <td colspan="2">
+                            Printed in the PDF
+                            <span class="ml-1 {{ $c['total_ok'] ? 'text-ok' : 'text-bad' }}">{{ $c['total_ok'] ? '✓ matches the lines read' : '✕ does not match the lines read' }}</span>
+                        </td>
+                        <td class="r">{{ fmt_num($c['file_units']) }}</td>
+                        <td class="r">{{ $c['file_bonus'] !== null ? fmt_num($c['file_bonus']) : '–' }}</td>
+                        <td class="r">{{ $c['file_value'] !== null ? fmt_num($c['file_value']) : '–' }}</td>
+                        <td></td><td></td>
+                    </tr>
+                @endif
+                </tfoot>
             </table>
         </div>
     @else
